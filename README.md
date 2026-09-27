@@ -1,0 +1,87 @@
+# RuleWise AI
+
+RuleWise AI is an explainable hybrid Neuro-Symbolic AI Rule Engine and Advisory Assistant designed to evaluate complex academic and administrative policies, combine symbolic forward-chaining rule evaluation with natural language explanation, and support what-if policy simulations.
+
+## Project Status
+
+- **Current Phase**: Phase 1 (Project Scaffolding & Development Skeleton)
+- This phase establishes a clean, runnable project foundation without domain logic or external model integrations.
+
+## Getting Started
+
+### 1. Prerequisites
+
+- Python 3.11+
+- Git
+
+### 2. Create the Virtual Environment
+
+Create an isolated virtual environment:
+
+```bash
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
+
+# Linux / macOS
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+Install the core dependencies required for Phase 1:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure Environment Variables
+
+Copy the template configuration file:
+
+```bash
+# Windows (PowerShell)
+Copy-Item .env.example .env
+
+# Linux / macOS
+cp .env.example .env
+```
+
+> **Note**: Never commit your `.env` file or real API keys to version control.
+
+### 5. Run Tests
+
+Execute the test suite using pytest:
+
+```bash
+python -m pytest
+```
+
+### 6. Start the FastAPI Server
+
+Run the development server with Uvicorn:
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+The server will start at `http://127.0.0.1:8000`.
+
+### 7. Health Endpoint
+
+Verify that the application is running by querying the health check endpoint:
+
+- **URL**: `GET http://127.0.0.1:8000/health`
+- **Sample Response**:
+  ```json
+  {
+    "status": "ok",
+    "project": "RuleWise AI",
+    "phase": 1
+  }
+  ```
+
+API interactive documentation is also available at:
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
