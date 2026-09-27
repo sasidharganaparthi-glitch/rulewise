@@ -1,9 +1,9 @@
 """Declarative rule schema and data structures for RuleWise AI.
 
 This module defines the structural Pydantic models for declarative rules,
-conditions, consequences, and execution results. Rules are stored and validated
-as pure structured data.
-Executable code (eval, exec, arbitrary imports) is strictly prohibited.
+conditions, consequences, and execution/inference results. Rules are stored
+and validated as pure structured data.
+Executable code (eval, exec, compile, arbitrary imports) is strictly prohibited.
 """
 
 from enum import Enum
@@ -195,4 +195,86 @@ class RuleExecutionResult(BaseModel):
     derived_facts: Dict[str, Any] = Field(
         default_factory=dict,
         description="Structured facts asserted/derived upon rule match",
+    )
+
+
+# -----------------------------------------------------------------------------
+# Phase 4 Forward-Chaining Inference Models
+# -----------------------------------------------------------------------------
+
+class FactProvenance(BaseModel):
+    """Audit metadata tracking the origin and derivation step of a fact."""
+
+    model_config = ConfigDict(frozen=True)
+
+    path: str = Field(..., description="Dotted fact path in working memory")
+    value: Any = Field(..., description="Value of the fact")
+    is_derived: bool = Field(default=False, description="True if inferred by a rule; False if initial")
+    step: int = Field(default=0, description="Inference sequence step when the fact was asserted")
+    rule_id: Optional[str] = Field(default=None, description="Identifier of the rule that produced this fact")
+
+
+class DerivationStep(BaseModel):
+    """Record of a single rule firing step during forward chaining."""
+
+    model_config = ConfigDict(frozen=True)
+
+    step: int = Field(..., description="Deterministic sequence step number (1-indexed)")
+    rule_id: str = Field(..., description="Identifier of the fired rule")
+    rule_name: str = Field(..., description="Name of the fired rule")
+    matched_condition: Optional[Any] = Field(default=None, description="Serialized condition structure that matched")
+    derived_facts: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Dictionary of facts asserted by this rule firing",
+    )
+    source_facts: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Snapshot of facts that satisfied the rule conditions",
+    )
+
+
+class InferenceResult(BaseModel):
+    """Comprehensive result produced by a forward-chaining inference run."""
+
+    model_config = ConfigDict(frozen=True)
+
+    final_facts: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Complete working memory facts after inference completion",
+    )
+    derived_facts: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="All newly derived facts generated during the inference run",
+    )
+    fired_rule_ids: List[str] = Field(
+        default_factory=list,
+        description="Ordered list of rule identifiers that fired during the run",
+    )
+    inference_step_count: int = Field(
+        default=0,
+        description="Total number of inference rule firing steps executed",
+    )
+    termination_reason: str = Field(
+        default="fixed_point",
+        description="Reason for inference termination: 'fixed_point', 'cycle_detected', or 'max_depth_reached'",
+    )
+    fixed_point_reached: bool = Field(
+        default=True,
+        description="True if inference reached a natural stable fixed point",
+    )
+    cycle_detected: bool = Field(
+        default=False,
+        description="True if an inference cycle or repeated state was encountered",
+    )
+    max_depth_reached: bool = Field(
+        default=False,
+        description="True if the configured maximum inference depth was reached",
+    )
+    derivation_history: List[DerivationStep] = Field(
+        default_factory=list,
+        description="Chronological sequence of rule firing steps",
+    )
+    fact_provenance: Dict[str, FactProvenance] = Field(
+        default_factory=dict,
+        description="Provenance audit trail mapping fact paths to origin details",
     )
