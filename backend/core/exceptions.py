@@ -7,6 +7,10 @@ class RuleWiseError(Exception):
     pass
 
 
+# -----------------------------------------------------------------------------
+# Knowledge Base Exceptions (Phase 2)
+# -----------------------------------------------------------------------------
+
 class KnowledgeBaseError(RuleWiseError):
     """Base exception for knowledge base operations and data handling."""
 
@@ -51,5 +55,57 @@ class CourseNotFoundError(EntityNotFoundError):
 
 class RuleNotFoundError(EntityNotFoundError):
     """Raised when a rule cannot be found by its identifier."""
+
+    pass
+
+
+# -----------------------------------------------------------------------------
+# Declarative Rule Engine Exceptions (Phase 3)
+# -----------------------------------------------------------------------------
+
+class EngineError(RuleWiseError):
+    """Base exception for declarative rule engine execution and evaluation errors."""
+
+    pass
+
+
+class OperatorError(EngineError):
+    """Base exception for comparison and operator evaluation errors."""
+
+    pass
+
+
+class UnsupportedOperatorError(OperatorError):
+    """Raised when an unrecognized or unsupported comparison operator is encountered."""
+
+    pass
+
+
+class InvalidComparisonError(OperatorError, TypeError):
+    """Raised when an operator cannot be evaluated due to incompatible operand types."""
+
+    pass
+
+
+class ConditionEvaluationError(EngineError):
+    """Base exception raised when rule condition evaluation fails."""
+
+    pass
+
+
+class UnknownConditionTypeError(ConditionEvaluationError):
+    """Raised when an unknown condition structure or logical operator is encountered."""
+
+    pass
+
+
+class FactResolutionError(EngineError, KeyError):
+    """Raised when a required fact path cannot be resolved from working memory."""
+
+    pass
+
+
+class MalformedRuleError(EngineError, ValueError):
+    """Raised when a rule definition has an invalid, incomplete, or corrupted structure."""
 
     pass

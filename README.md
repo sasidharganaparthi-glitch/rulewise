@@ -4,8 +4,8 @@ RuleWise AI is an explainable hybrid Neuro-Symbolic AI Rule Engine and Advisory 
 
 ## Project Status
 
-- **Current Phase**: Phase 2 (Knowledge Base & Declarative Rule Storage)
-- Phase 1 (Project Scaffolding) and Phase 2 (Knowledge Base Layer) are implemented and verified.
+- **Current Phase**: Phase 3 (Declarative Rule Engine)
+- Phase 1 (Scaffolding), Phase 2 (Knowledge Base), and Phase 3 (Rule Engine) are implemented and verified.
 
 ## Phase 2: Knowledge Base Layer
 
@@ -22,7 +22,29 @@ The Knowledge Base is a deterministic, in-memory repository and validation layer
 - **No Reasoning / Inference**: The Knowledge Base strictly stores, validates, loads, and retrieves structured data. It does **not** evaluate IF-THEN conditions, determine student eligibility, or resolve rule conflicts.
 - **Security**: Data is never executed as code (`eval()`, `exec()`, or dynamic imports are strictly prohibited).
 - **Determinism**: Loading the same files produces equivalent data with zero randomness or external API dependencies.
-- **Rule Execution**: Evaluation logic, forward chaining, and the inference engine will be implemented in **Phase 3**.
+
+## Phase 3: Declarative Rule Engine
+
+Phase 3 implements the deterministic, offline evaluation engine for declarative rules.
+
+### Capabilities
+- **Operators Layer (`backend/engine/operators.py`)**: Explicit, safe comparison dispatch without `eval()`:
+  - Supported comparison operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `IN` (handles scalar-in-collection and collection-membership).
+  - Strongly typed with `InvalidComparisonError` and `UnsupportedOperatorError`.
+- **Working Memory (`backend/engine/working_memory.py`)**: Isolated in-memory fact storage with safe dot-separated path resolution (e.g. `student.gpa`, `student.skills`, `student.completed_courses`).
+- **Condition Evaluator (`backend/engine/condition_evaluator.py`)**: Evaluates Boolean condition trees against working memory facts:
+  - Supported Boolean operators: `AND`, `OR`, `NOT` (including arbitrary nested trees).
+  - Purely data-driven with strict rejection of malformed or unknown condition nodes.
+- **Rule Matcher (`backend/engine/rule_matcher.py`)**: Tests whether a validated rule's condition is satisfied by facts in working memory.
+- **Consequence & Single-Rule Execution (`backend/engine/inference_engine.py`)**:
+  - Evaluates rules and asserts structured derived facts (e.g. `{"student.eligible_for_ai": true}`).
+  - Provides primitive interfaces: `evaluate_rule(rule, wm)` and `apply_rule(rule, wm)`.
+
+### Strict Security & Boundaries
+- **No Executable Code**: Rules are pure data. `eval()`, `exec()`, `compile()`, and dynamic imports are strictly barred.
+- **No LLM / Offline**: The rule engine is the deterministic final authority for policy evaluation and never calls Gemini or external network services.
+- **Phase 4 Boundary**: Full forward-chaining loops, agenda scheduling, conflict resolution, cycle detection, and explanation traces belong to **Phase 4**.
+
 
 
 ## Getting Started
