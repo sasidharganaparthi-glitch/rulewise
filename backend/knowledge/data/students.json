@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "id": "student_001",
+    "name": "Arun Sharma",
+    "gpa": 8.7,
+    "completed_courses": ["CS101", "MA101"],
+    "skills": ["python", "data_structures"],
+    "academic_status": "active"
+  },
+  {
+    "id": "student_002",
+    "name": "Priya Patel",
+    "gpa": 7.2,
+    "completed_courses": ["CS101"],
+    "skills": ["python"],
+    "academic_status": "active"
+  },
+  {
+    "id": "student_003",
+    "name": "Carlos Gomez",
+    "gpa": 6.4,
+    "completed_courses": ["MA101"],
+    "skills": ["calculus"],
+    "academic_status": "probation"
+  },
+  {
+    "id": "student_004",
+    "name": "Mei Lin",
+    "gpa": 9.4,
+    "completed_courses": ["CS101", "MA101", "AI101", "CS201"],
+    "skills": ["python", "machine_learning", "data_structures", "algorithms"],
+    "academic_status": "active"
+  }
+]

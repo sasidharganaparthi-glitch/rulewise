@@ -1,1 +1,112 @@
-[]
+[
+  {
+    "id": "RULE_ACADEMIC_STATUS_ACTIVE",
+    "name": "Active Academic Status Verification",
+    "description": "Student must maintain an active academic standing to be eligible for course enrollment and academic advancement.",
+    "priority": 100,
+    "status": "active",
+    "condition": {
+      "field": "student.academic_status",
+      "operator": "==",
+      "value": "active"
+    },
+    "consequence": {
+      "action": "flag_academic_status_verified",
+      "params": {
+        "status": "verified",
+        "eligible": true
+      },
+      "description": "Student academic standing verified as active."
+    },
+    "metadata": {
+      "category": "academic_standing",
+      "authority": "Office of Academic Affairs",
+      "version": "1.0"
+    }
+  },
+  {
+    "id": "RULE_MINIMUM_GPA_ADVANCED",
+    "name": "Advanced Course Minimum GPA Requirement",
+    "description": "Enrollment in advanced courses requires student GPA to be at or above 7.0 alongside active academic standing.",
+    "priority": 80,
+    "status": "active",
+    "condition": {
+      "operator": "AND",
+      "conditions": [
+        {
+          "field": "student.gpa",
+          "operator": ">=",
+          "value": 7.0
+        },
+        {
+          "field": "student.academic_status",
+          "operator": "==",
+          "value": "active"
+        }
+      ]
+    },
+    "consequence": {
+      "action": "grant_advanced_gpa_clearance",
+      "params": {
+        "clearance_level": "advanced",
+        "granted": true
+      },
+      "description": "Student meets minimum GPA threshold for advanced elective courses."
+    },
+    "metadata": {
+      "category": "eligibility",
+      "authority": "Academic Senate",
+      "version": "1.0"
+    }
+  },
+  {
+    "id": "RULE_PREREQUISITE_CS101",
+    "name": "Foundational CS Prerequisite",
+    "description": "Students must have completed CS101 before taking intermediate or advanced computer science courses.",
+    "priority": 70,
+    "status": "active",
+    "condition": {
+      "field": "student.completed_courses",
+      "operator": "IN",
+      "value": "CS101"
+    },
+    "consequence": {
+      "action": "grant_prerequisite_clearance",
+      "params": {
+        "prerequisite_course": "CS101",
+        "satisfied": true
+      },
+      "description": "Prerequisite CS101 marked as satisfied."
+    },
+    "metadata": {
+      "category": "prerequisites",
+      "authority": "Department of Computer Science",
+      "version": "1.0"
+    }
+  },
+  {
+    "id": "RULE_SKILL_PYTHON_PROFICIENCY",
+    "name": "Python Skill Competency Requirement",
+    "description": "Students enrolling in applied computing courses must demonstrate verified Python proficiency.",
+    "priority": 60,
+    "status": "active",
+    "condition": {
+      "field": "student.skills",
+      "operator": "IN",
+      "value": "python"
+    },
+    "consequence": {
+      "action": "grant_skill_competency",
+      "params": {
+        "skill": "python",
+        "verified": true
+      },
+      "description": "Python proficiency verified for the student."
+    },
+    "metadata": {
+      "category": "skills",
+      "authority": "Faculty Curriculum Committee",
+      "version": "1.0"
+    }
+  }
+]

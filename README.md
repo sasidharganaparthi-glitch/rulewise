@@ -4,8 +4,26 @@ RuleWise AI is an explainable hybrid Neuro-Symbolic AI Rule Engine and Advisory 
 
 ## Project Status
 
-- **Current Phase**: Phase 1 (Project Scaffolding & Development Skeleton)
-- This phase establishes a clean, runnable project foundation without domain logic or external model integrations.
+- **Current Phase**: Phase 2 (Knowledge Base & Declarative Rule Storage)
+- Phase 1 (Project Scaffolding) and Phase 2 (Knowledge Base Layer) are implemented and verified.
+
+## Phase 2: Knowledge Base Layer
+
+The Knowledge Base is a deterministic, in-memory repository and validation layer for academic domain entities and declarative policy rules.
+
+### Capabilities and Storage
+- **Student Data (`students.json`)**: Profiles containing identifier, name, GPA, completed courses, verified skills, and academic status.
+- **Course Data (`courses.json`)**: Course offerings including identifier, name, minimum GPA requirements, prerequisites, and required skills.
+- **Active Rules (`active_rules.json`)**: Declarative rules structured with conditions and consequences governing academic eligibility.
+- **Staged Rules (`staged_rules.json`)**: Proposed or unpromoted rules isolated from active policy.
+- **Schema Validation**: Strongly typed and validated using Pydantic v2 models (`Student`, `Course`, `Rule`, `Condition`, `Consequence`).
+
+### Boundaries & Design Principles
+- **No Reasoning / Inference**: The Knowledge Base strictly stores, validates, loads, and retrieves structured data. It does **not** evaluate IF-THEN conditions, determine student eligibility, or resolve rule conflicts.
+- **Security**: Data is never executed as code (`eval()`, `exec()`, or dynamic imports are strictly prohibited).
+- **Determinism**: Loading the same files produces equivalent data with zero randomness or external API dependencies.
+- **Rule Execution**: Evaluation logic, forward chaining, and the inference engine will be implemented in **Phase 3**.
+
 
 ## Getting Started
 

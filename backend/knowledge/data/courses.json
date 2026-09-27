@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "CS101",
+    "name": "Introduction to Programming",
+    "minimum_gpa": 5.0,
+    "prerequisite_courses": [],
+    "required_skills": []
+  },
+  {
+    "id": "MA101",
+    "name": "Calculus and Linear Algebra",
+    "minimum_gpa": 5.0,
+    "prerequisite_courses": [],
+    "required_skills": []
+  },
+  {
+    "id": "CS201",
+    "name": "Data Structures and Algorithms",
+    "minimum_gpa": 6.5,
+    "prerequisite_courses": ["CS101"],
+    "required_skills": ["python"]
+  },
+  {
+    "id": "AI101",
+    "name": "Introduction to Artificial Intelligence",
+    "minimum_gpa": 7.0,
+    "prerequisite_courses": ["CS101", "MA101"],
+    "required_skills": ["python", "data_structures"]
+  }
+]

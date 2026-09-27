@@ -1,1 +1,64 @@
-[]
+[
+  {
+    "id": "RULE_STAGED_HONORS_RESEARCH",
+    "name": "Honors Research Track Eligibility (Proposed)",
+    "description": "Proposed policy for upcoming academic year: Students with GPA >= 9.0 and active status qualify for Honors Research nomination.",
+    "priority": 90,
+    "status": "staged",
+    "condition": {
+      "operator": "AND",
+      "conditions": [
+        {
+          "field": "student.gpa",
+          "operator": ">=",
+          "value": 9.0
+        },
+        {
+          "field": "student.academic_status",
+          "operator": "==",
+          "value": "active"
+        }
+      ]
+    },
+    "consequence": {
+      "action": "nominate_honors_research",
+      "params": {
+        "track": "Honors Research",
+        "staged": true
+      },
+      "description": "Nominate student for undergraduate honors research fellowship."
+    },
+    "metadata": {
+      "category": "proposed_policy",
+      "proposed_by": "Curriculum Innovation Committee",
+      "effective_term": "Fall 2027",
+      "version": "0.9"
+    }
+  },
+  {
+    "id": "RULE_STAGED_MATH_PREREQ_WAIVER",
+    "name": "Accelerated Math Placement Waiver (Under Review)",
+    "description": "Proposed policy allowing students with demonstrated calculus skill to receive an accelerated placement waiver for MA101.",
+    "priority": 75,
+    "status": "staged",
+    "condition": {
+      "field": "student.skills",
+      "operator": "IN",
+      "value": "calculus"
+    },
+    "consequence": {
+      "action": "grant_prerequisite_waiver",
+      "params": {
+        "waived_course": "MA101",
+        "staged": true
+      },
+      "description": "Recommend prerequisite waiver for MA101 based on demonstrated proficiency."
+    },
+    "metadata": {
+      "category": "proposed_policy",
+      "proposed_by": "Mathematics Department Chair",
+      "effective_term": "Fall 2027",
+      "version": "0.8"
+    }
+  }
+]
