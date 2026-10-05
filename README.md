@@ -4,8 +4,8 @@ RuleWise AI is an explainable hybrid Neuro-Symbolic AI Rule Engine and Advisory 
 
 ## Project Status
 
-- **Current Phase**: Phase 4 (Deterministic Forward-Chaining Inference Engine)
-- Phase 1 (Scaffolding), Phase 2 (Knowledge Base), Phase 3 (Rule Engine), and Phase 4 (Inference Engine) are implemented and verified.
+- **Current Phase**: Phase 5 (Explainability and Reasoning Trace)
+- Phase 1 (Scaffolding), Phase 2 (Knowledge Base), Phase 3 (Rule Engine), Phase 4 (Inference Engine), and Phase 5 (Explainability) are implemented and verified.
 
 ## Phase 2: Knowledge Base Layer
 
@@ -74,7 +74,37 @@ Phase 4 extends the Phase 3 single-rule primitives into a full forward-chaining 
 
 ### Phase 4 Security & Boundaries
 - No `eval()`, `exec()`, `compile()`, subprocess calls, dynamic imports, network calls, or LLM calls anywhere in the inference engine.
-- Phase 5 (natural language explanations, Gemini integration, what-if simulation) is **not yet implemented**.
+
+## Phase 5: Explainability and Reasoning Trace
+
+Phase 5 implements a deterministic, evidence-based explainability layer that converts the raw machine-readable inference history from Phase 4 into structured, auditable explanations.
+
+### Capabilities
+
+- **Reasoning Traces (`backend/explainability/trace_builder.py`)**:
+  - `build_trace(result, rules, conclusion)`: Compiles the full chronological sequence of rule firings, preserving step numbers, rule names/IDs, priorities, condition evaluations, source facts, and newly asserted derived facts into a frozen `Explanation` model.
+  - Information-preserving: Never loses details from the underlying Phase 4 `InferenceResult`.
+- **Condition Explanations (`explain_condition()`)**:
+  - Explains leaf comparisons (`ConditionExplanation`) showing fact path, actual value from working memory, comparison operator, target expected value, and the boolean result.
+  - Explains compound Boolean conditions (`CompoundConditionExplanation`) across `AND`, `OR`, and `NOT`, preserving recursive hierarchy, sub-condition outcomes, and inverted boolean results.
+- **Fact & Rule Provenance (`build_fact_provenance()`)**:
+  - Traces whether every fact was part of the `initial` working memory or was `derived` by a specific rule at a specific inference step.
+  - Enriches records with human-readable source rule names.
+- **WHY Explanations (`build_why()`)**:
+  - Reconstructs backward derivation chains from a final conclusion back through intermediate derived facts to the root initial facts that made it possible.
+- **WHY-NOT Explanations (`build_why_not()`)**:
+  - Pinpoints why a desired conclusion was not reached by evaluating candidate rules, identifying missing facts, and extracting exact blocking conditions that failed.
+  - Insufficient-evidence handling: If no candidate rules exist to derive the fact, returns a structured `insufficient_evidence` result without hallucinating reasons.
+- **Contrastive Explanation Structure (`build_contrastive()`)**:
+  - Lays the structural foundation for "Why X instead of Y?" queries by comparing differentiating rules and facts using existing inference evidence.
+  - Embeds structured `why_a` and `why_not_b` explanations.
+
+### Strict Boundaries & Design Principles
+- **Inference Engine Remains Authority**: The explainability layer only interprets recorded evidence. It never alters facts, modifies rules, or reruns inference with altered logic.
+- **Purely Structured Data**: Natural-language generation is **NOT** part of Phase 5.
+- **Offline & Deterministic**: Zero randomness, zero timestamps, zero external API calls.
+- **No LLMs**: Gemini integration belongs to **Phase 6**.
+- **No What-If Simulations**: Counterfactual what-if simulation belongs to **Phase 9**.
 
 
 ## Getting Started
