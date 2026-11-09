@@ -3,12 +3,928 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RuleWise AI</title>
+    <meta name="description" content="RuleWise AI — Neuro-Symbolic Artificial Intelligence Platform with Deterministic Rule Authority">
+    <title>RuleWise AI — Explainable Neuro-Symbolic Platform</title>
+    <!-- Modern Fluent Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
-    <div id="app">
-        <h1>RuleWise AI</h1>
-        <p>Phase 1 Skeleton - Frontend UI will be integrated in subsequent phases.</p>
+<body class="rulewise-theme">
+    <div id="app" class="app-layout">
+
+        <!-- ============================================================== -->
+        <!-- LEFT SIDEBAR                                                   -->
+        <!-- ============================================================== -->
+        <aside id="sidebar" class="rulewise-sidebar" aria-label="RuleWise Navigation">
+            <!-- Sidebar Top: Brand & Collapse -->
+            <div class="sidebar-header">
+                <div class="rulewise-brand" id="brand-home-link" title="RuleWise AI Home">
+                    <img src="/assets/rulewise-logo-dark-cropped.png" alt="Rulewise" class="rulewise-brand-img" onerror="this.onerror=null; this.src='assets/rulewise-logo-dark-cropped.png';">
+                </div>
+                <button id="sidebar-toggle-btn" class="icon-btn sidebar-collapse-btn" title="Toggle Sidebar" aria-label="Toggle Navigation">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Top Sign In / Account Tile (Moved from bottom to top) -->
+            <div class="sidebar-account-top">
+                <div class="user-account-top-card" id="sidebar-auth-btn" title="Sign In, Register or Manage Account">
+                    <div class="user-avatar-sm" id="user-avatar-initial">G</div>
+                    <div class="user-info-sm">
+                        <span class="user-name-sm" id="user-display-name">Guest Explorer</span>
+                        <span class="user-role-sm" id="user-role-badge">Sign In / Account</span>
+                    </div>
+                    <button id="sidebar-logout-btn" class="icon-btn logout-icon-btn hidden" title="Log Out" aria-label="Log Out">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- New Chat Action Pill -->
+            <div class="sidebar-action-wrap">
+                <button id="sidebar-new-chat-btn" class="rulewise-new-chat-pill" title="Start new conversation session">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>New chat</span>
+                </button>
+            </div>
+
+            <!-- Search Chats Input -->
+            <div class="sidebar-search-wrap">
+                <div class="rulewise-search-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="sidebar-chat-search" placeholder="Search chats..." autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Navigation Body -->
+            <div class="sidebar-scrollable">
+                <!-- Platform Views Navigation -->
+                <div class="sidebar-nav-group">
+                    <span class="sidebar-section-title">Explore & Author</span>
+                    <button class="nav-item active" data-tab="chat-view" title="AI Assistant & Chat">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>Chat & Advisory</span>
+                    </button>
+                    <button class="nav-item" data-tab="file-tools-view" title="PDF & File Converters">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span>File Tools & Converters</span>
+                    </button>
+                    <button class="nav-item" data-tab="domains-view" title="Explore Decision Domains">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                        <span>Explore Domains</span>
+                    </button>
+                    <button class="nav-item" data-tab="studio-view" title="Visual Rule Studio">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                            <polyline points="2 17 12 22 22 17"></polyline>
+                            <polyline points="2 12 12 17 22 12"></polyline>
+                        </svg>
+                        <span>Visual Rule Studio</span>
+                    </button>
+                    <button class="nav-item" data-tab="official-rules-view" title="Official Rule Library">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                        <span>Official Rule Library</span>
+                    </button>
+                    <button class="nav-item" data-tab="workspace-view" title="Personal Workspace">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>My Workspace</span>
+                    </button>
+                    <button class="nav-item" data-tab="history-view" title="Decision History & Audits">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 14 14"></polyline>
+                        </svg>
+                        <span>Decision History</span>
+                    </button>
+                    <button class="nav-item" data-tab="simulator-view" title="What-If Scenario Simulator">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="6" y1="3" x2="6" y2="15"></line>
+                            <circle cx="18" cy="6" r="3"></circle>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <path d="M18 9a9 9 0 0 1-9 9"></path>
+                        </svg>
+                        <span>What-If Simulator</span>
+                    </button>
+                    <button class="nav-item" data-tab="analytics-view" title="Platform Analytics">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        <span>Platform Analytics</span>
+                    </button>
+
+                    <!-- Dedicated Admin Console Nav Item -->
+                    <button class="nav-item admin-nav-item" id="admin-nav-item" data-tab="admin-view" title="Admin Console (Platform Analysis, Rules & Logins)">
+                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <circle cx="12" cy="11" r="3"></circle>
+                        </svg>
+                        <span>Admin Console</span>
+                        <span class="admin-badge">Admin</span>
+                    </button>
+                </div>
+
+                <!-- Recent Conversations (Genuine User Sessions, Saved Up To 30 Days) -->
+                <div class="sidebar-nav-group">
+                    <span class="sidebar-section-title">Recent Chats</span>
+                    <div id="recent-chats-list" class="recent-chats-list">
+                        <div class="recent-chat-item active">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span class="recent-chat-title">Current Session</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Sidebar Backdrop for Mobile -->
+        <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+        <!-- ============================================================== -->
+        <!-- MAIN VIEWPORT CONTAINER                                        -->
+        <!-- ============================================================== -->
+        <div class="main-wrapper">
+            <!-- Top Navigation Bar -->
+            <header class="rulewise-top-bar">
+                <div class="top-bar-left">
+                    <!-- Both Buttons from User's Image 1: Panel Toggle Button & Hamburger Button -->
+                    <button id="topbar-panel-toggle-btn" class="icon-btn header-panel-btn" title="Toggle Sidebar" aria-label="Toggle Sidebar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                        </svg>
+                    </button>
+                    <button id="sidebar-open-btn" class="icon-btn header-menu-btn" title="Open Navigation Menu" aria-label="Open Navigation">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <div class="header-breadcrumbs">
+                        <span class="header-title" id="current-view-title">Chat & Advisory</span>
+                        <span class="header-subtitle" id="current-view-subtitle">Conversational NLP + Deterministic Rule Authority</span>
+                    </div>
+                </div>
+
+                <div class="top-bar-right">
+                    <!-- Domain Switcher Pill -->
+                    <div class="rulewise-domain-pill-header" id="header-domain-pill">
+                        <span class="status-dot green"></span>
+                        <span id="active-domain-indicator">Academic Policy</span>
+                    </div>
+
+                    <!-- New Topic / New Chat Pill -->
+                    <button id="new-chat-btn" class="rulewise-pill-btn" title="Start fresh conversation">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>New topic</span>
+                    </button>
+
+                    <!-- Top Prominent Sign In / Account Button -->
+                    <button id="top-auth-btn" class="top-auth-pill" title="Sign In or Manage Account">
+                        <span class="top-avatar-circle" id="top-avatar-initial">G</span>
+                        <span class="top-user-name" id="top-user-display-name">Guest Mode</span>
+                        <span class="top-auth-badge" id="top-auth-badge">Sign In</span>
+                    </button>
+
+                    <!-- Top Direct Logout Button (Active when authenticated) -->
+                    <button id="top-logout-btn" class="rulewise-btn secondary btn-sm hidden" title="Log Out of RuleWise">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Log Out</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content Panels -->
+            <main class="content-container">
+
+                <!-- ========================================================== -->
+                <!-- VIEW 1: CHAT & ADVISORY VIEW                               -->
+                <!-- ========================================================== -->
+                <section id="chat-view" class="view-panel active">
+                    <div class="chat-area" id="chat-area">
+
+                        <!-- HERO WELCOME SCREEN (Centered when fresh) -->
+                        <div id="welcome-hero" class="rulewise-welcome-hero">
+                            <div class="rulewise-hero-logo">
+                                <img src="/assets/rulewise-logo-dark-cropped.png" alt="Rulewise AI" class="rulewise-hero-logo-img" onerror="this.onerror=null; this.src='assets/rulewise-logo-dark-cropped.png';">
+                            </div>
+                            <p class="rulewise-welcome-sub">
+                                Ask questions, explore ideas, or make explainable rule-based decisions with zero hallucination.
+                            </p>
+                        </div>
+
+                        <!-- Messages Stream -->
+                        <div id="messages-list" class="messages-list" role="log" aria-live="polite"></div>
+
+                        <!-- Typing / Evaluating Loading State -->
+                        <div id="loading-indicator" class="loading-indicator hidden">
+                            <div class="rulewise-typing-spinner"></div>
+                            <span class="loading-msg">RuleWise AI is thinking...</span>
+                        </div>
+
+                        <!-- Error Banner -->
+                        <div id="chat-error-banner" class="banner banner-error hidden">
+                            <span id="chat-error-text">Network connection error.</span>
+                            <button id="chat-retry-btn" class="btn btn-sm btn-outline">Retry</button>
+                        </div>
+                    </div>
+
+                    <!-- PROMPT BOX & SUGGESTIONS WRAPPER -->
+                    <div class="composer-wrapper" id="composer-wrapper">
+                        <!-- Floating RuleWise Prompt Box -->
+                        <form id="chat-form" class="rulewise-composer-box">
+
+                            <!-- Attached File Chips Container -->
+                            <div id="attached-files-container" class="attached-files-container hidden"></div>
+
+                            <div class="composer-textarea-row">
+                                <textarea
+                                    id="user-input"
+                                    class="rulewise-textarea"
+                                    rows="1"
+                                    maxlength="20000"
+                                    placeholder="Message RuleWise AI or evaluate a policy (e.g. 'Is Arun eligible for AI?')..."
+                                    required
+                                ></textarea>
+                            </div>
+                            <div class="composer-toolbar-row">
+                                <div class="toolbar-left">
+                                    <div class="domain-badge-pill" id="composer-domain-tag">
+                                        <span class="pill-dot"></span>
+                                        <span id="composer-domain-label">Academic Policy</span>
+                                    </div>
+                                    <!-- Workable File Upload Button -->
+                                    <button type="button" class="rulewise-tool-btn" id="file-upload-btn" title="Upload files (PDF, Word, Excel, PPT, TXT, Images)">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                        </svg>
+                                    </button>
+                                    <input type="file" id="file-upload-input" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,.json,.md,.jpg,.jpeg,.png,.webp,.gif" style="display:none;">
+
+                                    <!-- Voice Input Microphone Button -->
+                                    <button type="button" class="rulewise-tool-btn mic-btn" id="mic-btn" title="Speak to RuleWise (Voice to text)">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="toolbar-right">
+                                    <span class="char-count" id="char-counter">0/20000</span>
+                                    <button type="submit" id="send-btn" class="rulewise-send-circle" disabled title="Send message">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                                            <polyline points="5 12 12 5 19 12"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- PROMPT SUGGESTION CARDS (Clean White Border Lines, No Color Lines) -->
+                        <div class="rulewise-suggestion-container" id="rulewise-hero-starters">
+                            <div class="rulewise-starters-grid">
+                                <div class="starter-card rulewise-suggestion-card" data-query="Is Arun eligible for AI course?">
+                                    <div class="suggestion-icon-wrap">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                                            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="suggestion-text-wrap">
+                                        <span class="suggestion-title">Check eligibility using my rules</span>
+                                        <span class="suggestion-desc">"Is Arun eligible for AI course?"</span>
+                                    </div>
+                                </div>
+
+                                <div class="starter-card rulewise-suggestion-card" data-query="Help me create a new custom decision domain for recruitment">
+                                    <div class="suggestion-icon-wrap">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="suggestion-text-wrap">
+                                        <span class="suggestion-title">Create a custom decision domain</span>
+                                        <span class="suggestion-desc">"Define candidate scoring domain"</span>
+                                    </div>
+                                </div>
+
+                                <div class="starter-card rulewise-suggestion-card" data-query="Why is Priya not eligible for AI course?">
+                                    <div class="suggestion-icon-wrap">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="suggestion-text-wrap">
+                                        <span class="suggestion-title">Explain a rule-based decision</span>
+                                        <span class="suggestion-desc">"Why is Priya not eligible for AI?"</span>
+                                    </div>
+                                </div>
+
+                                <div class="starter-card rulewise-suggestion-card" data-query="Help me understand forward chaining and backward chaining in AI">
+                                    <div class="suggestion-icon-wrap">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="suggestion-text-wrap">
+                                        <span class="suggestion-title">Help me understand a complex topic</span>
+                                        <span class="suggestion-desc">"Explain neuro-symbolic inference"</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Subtext Disclaimer -->
+                        <div class="composer-disclaimer">
+                            <span>RuleWise AI combines natural conversational assistance with deterministic, verifiable rule engine decisions.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 2: FILE TOOLS & CONVERTERS                            -->
+                <!-- ========================================================== -->
+                <section id="file-tools-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">File Tools & Converters</h2>
+                            <p class="panel-subtext">Convert, compress, and edit documents, PDFs, and images with enterprise-grade security.</p>
+                        </div>
+                    </div>
+
+                    <div class="file-tools-grid">
+                        <!-- Tool 1: Image to PDF -->
+                        <div class="rulewise-card tool-card">
+                            <div class="tool-card-header">
+                                <div class="tool-icon-badge">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="tool-title">Image to PDF</h3>
+                                    <p class="tool-desc">Combine JPG, PNG, or WebP images into a single polished PDF document.</p>
+                                </div>
+                            </div>
+                            <div class="tool-body">
+                                <input type="file" id="img-to-pdf-input" multiple accept="image/jpeg,image/png,image/webp" class="file-drop-input">
+                                <div class="tool-file-selected" id="img-to-pdf-status">No images selected</div>
+                                <button class="rulewise-btn primary" id="img-to-pdf-btn">Convert to PDF</button>
+                            </div>
+                        </div>
+
+                        <!-- Tool 2: PDF to Image -->
+                        <div class="rulewise-card tool-card">
+                            <div class="tool-card-header">
+                                <div class="tool-icon-badge">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="tool-title">PDF to Image</h3>
+                                    <p class="tool-desc">Extract embedded images and pages from any PDF document into a downloadable ZIP archive.</p>
+                                </div>
+                            </div>
+                            <div class="tool-body">
+                                <input type="file" id="pdf-to-img-input" accept="application/pdf" class="file-drop-input">
+                                <div class="tool-file-selected" id="pdf-to-img-status">No PDF selected</div>
+                                <button class="rulewise-btn primary" id="pdf-to-img-btn">Extract Images</button>
+                            </div>
+                        </div>
+
+                        <!-- Tool 3: File Compressor -->
+                        <div class="rulewise-card tool-card">
+                            <div class="tool-card-header">
+                                <div class="tool-icon-badge">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="4 14 10 14 10 20"></polyline>
+                                        <polyline points="20 10 14 10 14 4"></polyline>
+                                        <line x1="14" y1="10" x2="21" y2="3"></line>
+                                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="tool-title">File Compressor</h3>
+                                    <p class="tool-desc">Significantly compress PDF or Image files to minimize size while keeping sharpness.</p>
+                                </div>
+                            </div>
+                            <div class="tool-body">
+                                <input type="file" id="compress-input" accept="application/pdf,image/jpeg,image/png,image/webp" class="file-drop-input">
+                                <div class="form-group" style="margin-top: 8px;">
+                                    <label for="compress-quality">Compression Quality: <span id="quality-val">60%</span></label>
+                                    <input type="range" id="compress-quality" min="15" max="90" value="60" class="range-slider">
+                                </div>
+                                <div class="tool-file-selected" id="compress-status">No file selected</div>
+                                <button class="rulewise-btn primary" id="compress-btn">Compress File</button>
+                            </div>
+                        </div>
+
+                        <!-- Tool 4: PDF Merger & Editor -->
+                        <div class="rulewise-card tool-card">
+                            <div class="tool-card-header">
+                                <div class="tool-icon-badge">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M8 6h13"></path>
+                                        <path d="M8 12h13"></path>
+                                        <path d="M8 18h13"></path>
+                                        <path d="M3 6h.01"></path>
+                                        <path d="M3 12h.01"></path>
+                                        <path d="M3 18h.01"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="tool-title">PDF Merger & Editor</h3>
+                                    <p class="tool-desc">Combine 2 or more PDF documents into a clean, unified multi-page file.</p>
+                                </div>
+                            </div>
+                            <div class="tool-body">
+                                <input type="file" id="merge-pdf-input" multiple accept="application/pdf" class="file-drop-input">
+                                <div class="tool-file-selected" id="merge-pdf-status">Select 2+ PDF files</div>
+                                <button class="rulewise-btn primary" id="merge-pdf-btn">Merge PDFs</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 3: EXPLORE DOMAINS                                    -->
+                <!-- ========================================================== -->
+                <section id="domains-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">Domains & Decision Catalog</h2>
+                            <p class="panel-subtext">Explore verified official domains or create custom multi-domain rule schemas.</p>
+                        </div>
+                        <button class="rulewise-btn primary" id="open-create-domain-modal-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Create Domain</span>
+                        </button>
+                    </div>
+
+                    <div id="domains-grid" class="rulewise-cards-grid">
+                        <div class="loading-placeholder">Loading decision domains...</div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 4: VISUAL RULE STUDIO                                 -->
+                <!-- ========================================================== -->
+                <section id="studio-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">Visual Rule Studio</h2>
+                            <p class="panel-subtext">Design, author, and validate deterministic rule logic with real-time syntax checking.</p>
+                        </div>
+                    </div>
+
+                    <div class="studio-two-col">
+                        <!-- Rule Form -->
+                        <div class="rulewise-card studio-form-card">
+                            <h3 class="card-title">Rule Definition</h3>
+                            <form id="create-rule-form">
+                                <div class="form-group">
+                                    <label for="rule-domain-select">Domain Scope</label>
+                                    <select id="rule-domain-select" class="form-control" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rule-name-input">Rule Name</label>
+                                    <input type="text" id="rule-name-input" class="form-control" placeholder="e.g. Scholarship Merit Threshold" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rule-priority-input">Priority (Higher runs first)</label>
+                                    <input type="number" id="rule-priority-input" class="form-control" value="10" min="1" max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label for="rule-condition-json">Condition Schema (JSON Expression)</label>
+                                    <textarea id="rule-condition-json" class="form-control code-editor" rows="6" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rule-action-json">Action Schema (JSON Mutation)</label>
+                                    <textarea id="rule-action-json" class="form-control code-editor" rows="4" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rule-explanation-tpl">Human Explanation Template</label>
+                                    <input type="text" id="rule-explanation-tpl" class="form-control" placeholder="e.g. Student {name} qualifies with GPA {gpa} >= 3.5">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="rulewise-btn secondary" id="validate-rule-btn">Validate Schema</button>
+                                    <button type="submit" class="rulewise-btn primary" id="save-rule-btn">Save Rule</button>
+                                </div>
+                            </form>
+                            <div id="rule-validation-feedback" class="validation-feedback hidden"></div>
+                        </div>
+
+                        <!-- Rule Live Tester -->
+                        <div class="rulewise-card studio-tester-card">
+                            <h3 class="card-title">Instant Rule Tester</h3>
+                            <p class="card-subtitle">Test rule against sample input facts to observe deterministic activation.</p>
+                            <div class="form-group">
+                                <label for="test-facts-json">Test Facts (JSON)</label>
+                                <textarea id="test-facts-json" class="form-control code-editor" rows="7">
+{
+  "student": "Arun",
+  "gpa": 3.8,
+  "credits": 30,
+  "prerequisites": ["CS101", "MATH201"]
+}</textarea>
+                            </div>
+                            <button type="button" class="rulewise-btn secondary" id="run-rule-test-btn">Run Test Execution</button>
+                            <div id="rule-test-results" class="test-results-box hidden">
+                                <h4>Test Outcome</h4>
+                                <div id="rule-test-output"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 5: OFFICIAL RULE LIBRARY                              -->
+                <!-- ========================================================== -->
+                <section id="official-rules-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">Official Policy Library</h2>
+                            <p class="panel-subtext">Verified, immutable system rules governing accredited evaluations.</p>
+                        </div>
+                    </div>
+                    <div id="official-rules-list" class="rules-table-container">
+                        <div class="loading-placeholder">Loading official policy rules...</div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 6: PERSONAL WORKSPACE                                 -->
+                <!-- ========================================================== -->
+                <section id="workspace-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">Personal Rule Workspace</h2>
+                            <p class="panel-subtext">Manage your custom rule collections, draft policies, and export bundles.</p>
+                        </div>
+                        <button class="rulewise-btn secondary" id="export-workspace-btn">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Export JSON</span>
+                        </button>
+                    </div>
+                    <div id="custom-rules-list" class="rules-table-container">
+                        <div class="loading-placeholder">Loading custom rules...</div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 7: DECISION HISTORY & AUDITS                          -->
+                <!-- ========================================================== -->
+                <section id="history-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">Decision History & Audit Trail</h2>
+                            <p class="panel-subtext">Complete verifiable audit log of past evaluations and deterministic rule activations.</p>
+                        </div>
+                    </div>
+                    <div id="evaluations-history-list" class="history-list-container">
+                        <div class="loading-placeholder">Loading decision history...</div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 8: WHAT-IF SCENARIO SIMULATOR                         -->
+                <!-- ========================================================== -->
+                <section id="simulator-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">What-If Scenario Simulator</h2>
+                            <p class="panel-subtext">Compare decision outcomes between baseline facts and hypothetical counterfactual variations.</p>
+                        </div>
+                    </div>
+                    <div class="simulator-layout">
+                        <div class="rulewise-card">
+                            <h3 class="card-title">Scenario Configuration</h3>
+                            <div class="form-group">
+                                <label for="sim-domain">Target Domain</label>
+                                <select id="sim-domain" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sim-baseline-facts">Baseline Facts (JSON)</label>
+                                <textarea id="sim-baseline-facts" class="form-control code-editor" rows="6">{ "student": "Priya", "gpa": 3.2, "completed_credits": 45 }</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="sim-candidate-facts">Counterfactual Facts (JSON)</label>
+                                <textarea id="sim-candidate-facts" class="form-control code-editor" rows="6">{ "student": "Priya", "gpa": 3.7, "completed_credits": 60 }</textarea>
+                            </div>
+                            <button class="rulewise-btn primary" id="run-simulation-btn">Compare Scenarios</button>
+                        </div>
+
+                        <div class="rulewise-card" id="simulation-results-card">
+                            <h3 class="card-title">Scenario Comparison Matrix</h3>
+                            <div id="sim-results-output" class="empty-state">
+                                <span>Run simulation to inspect baseline vs counterfactual rule activations and delta analysis.</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 9: PLATFORM ANALYTICS                                 -->
+                <!-- ========================================================== -->
+                <section id="analytics-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">Platform Intelligence & Health</h2>
+                            <p class="panel-subtext">Real-time status of the neuro-symbolic engine, rule catalogs, and API endpoints.</p>
+                        </div>
+                    </div>
+                    <div class="analytics-metrics-grid">
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Engine Authority</span>
+                            <span class="metric-value badge success">100% Deterministic</span>
+                        </div>
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Registered Domains</span>
+                            <span class="metric-number" id="stat-domains-count">-</span>
+                        </div>
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Official Rules</span>
+                            <span class="metric-number" id="stat-official-rules-count">-</span>
+                        </div>
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Custom Rules</span>
+                            <span class="metric-number" id="stat-custom-rules-count">-</span>
+                        </div>
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Total Evaluations</span>
+                            <span class="metric-number" id="stat-evaluations-count">-</span>
+                        </div>
+                    </div>
+
+                    <div class="rulewise-card architecture-card">
+                        <h3 class="card-title">Neuro-Symbolic Pipeline Architecture</h3>
+                        <div class="arch-flow">
+                            <div class="arch-node">Natural Language Query</div>
+                            <div class="arch-arrow">→</div>
+                            <div class="arch-node">Gemini Language Layer</div>
+                            <div class="arch-arrow">→</div>
+                            <div class="arch-node active">Deterministic Symbolic Engine (Sole Authority)</div>
+                            <div class="arch-arrow">→</div>
+                            <div class="arch-node">Explainability & Traces</div>
+                            <div class="arch-arrow">→</div>
+                            <div class="arch-node">Auditable Result</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================== -->
+                <!-- VIEW 10: ADMIN CONSOLE (Restricted to Administrators)      -->
+                <!-- ========================================================== -->
+                <section id="admin-view" class="view-panel hidden">
+                    <div class="rulewise-panel-header">
+                        <div>
+                            <h2 class="panel-heading">Administrator Console</h2>
+                            <p class="panel-subtext">Platform telemetry, official rule libraries, and user logins audit log with password encryption status.</p>
+                        </div>
+                        <span class="badge success" style="font-size: 13px; padding: 6px 12px;">Admin Mode Active</span>
+                    </div>
+
+                    <!-- Admin Telemetry Cards -->
+                    <div class="analytics-metrics-grid" id="admin-telemetry-grid">
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Total Users</span>
+                            <span class="metric-number" id="admin-stat-users">-</span>
+                        </div>
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Login Audit Records</span>
+                            <span class="metric-number" id="admin-stat-logins">-</span>
+                        </div>
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Official Policy Rules</span>
+                            <span class="metric-number" id="admin-stat-rules">-</span>
+                        </div>
+                        <div class="rulewise-card metric-card">
+                            <span class="metric-label">Security Standards</span>
+                            <span class="metric-value badge success">Salted PBKDF2/Argon2</span>
+                        </div>
+                    </div>
+
+                    <!-- Official Rule Libraries (Admin Section 1) -->
+                    <div class="rulewise-card" style="margin-bottom: 24px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <h3 class="card-title">Official Regulatory Rule Libraries</h3>
+                            <button class="rulewise-btn secondary btn-sm" id="refresh-admin-rules-btn">Refresh Rules</button>
+                        </div>
+                        <div id="admin-rules-table-wrap" class="rules-table-container">
+                            <div class="loading-placeholder">Loading official rule catalog...</div>
+                        </div>
+                    </div>
+
+                    <!-- User Logins & Access Audit Table (Admin Section 2) -->
+                    <div class="rulewise-card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div>
+                                <h3 class="card-title">User Logins & Access Audit Log</h3>
+                                <p class="card-subtitle">Complete chronological record of all user login attempts and registrations.</p>
+                            </div>
+                            <button class="rulewise-btn secondary btn-sm" id="refresh-admin-logins-btn">Refresh Logins</button>
+                        </div>
+                        <div id="admin-logins-table-wrap" class="rules-table-container">
+                            <div class="loading-placeholder">Loading user access audit log...</div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
     </div>
+
+    <!-- ============================================================== -->
+    <!-- MODALS & DIALOGS                                               -->
+    <!-- ============================================================== -->
+
+    <!-- MODAL 1: Authentication / Account -->
+    <div id="auth-modal" class="modal-backdrop hidden">
+        <div class="rulewise-modal-card">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="rulewise-logo-mark-wrap small">
+                        <svg class="rulewise-logo-svg" width="22" height="22" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M 54 22 L 32 36 L 16 54 L 34 72" stroke="currentColor" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter"/>
+                            <path d="M 46 78 L 68 64 L 84 46 L 66 28" stroke="currentColor" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter"/>
+                        </svg>
+                    </div>
+                    <h3 id="auth-modal-title">RuleWise Account</h3>
+                </div>
+                <button class="icon-btn modal-close-btn" id="auth-modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="auth-tabs" id="auth-tabs-container">
+                    <button class="auth-tab-btn active" id="tab-login-btn">Log In</button>
+                    <button class="auth-tab-btn" id="tab-register-btn">Register</button>
+                    <button class="auth-tab-btn" id="tab-guest-btn">Guest Mode</button>
+                </div>
+
+                <!-- Form 1: Log In (Gmail / Email mandatory) -->
+                <form id="login-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="login-username">Gmail / Email Address or Username <span class="required-star">*</span></label>
+                        <input type="text" id="login-username" class="form-control" placeholder="user@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password <span class="required-star">*</span></label>
+                        <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="rulewise-btn primary btn-block">Sign In</button>
+                </form>
+
+                <!-- Form 2: Register (Gmail / Email mandatory) -->
+                <form id="register-form" class="auth-form hidden">
+                    <div class="form-group">
+                        <label for="reg-username">Username <span class="required-star">*</span></label>
+                        <input type="text" id="reg-username" class="form-control" placeholder="Choose a username" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Gmail / Email Address <span class="required-star">*</span></label>
+                        <input type="email" id="reg-email" class="form-control" placeholder="name@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Password <span class="required-star">*</span></label>
+                        <input type="password" id="reg-password" class="form-control" placeholder="Min 6 characters" required minlength="6">
+                    </div>
+                    <button type="submit" class="rulewise-btn primary btn-block">Create Account</button>
+                </form>
+
+                <!-- Tab 3: Guest Mode -->
+                <div id="guest-panel" class="auth-form hidden">
+                    <p class="guest-info">Explore all platform capabilities with instant guest access. No credentials or setup required.</p>
+                    <button id="guest-continue-btn" class="rulewise-btn secondary btn-block">Continue as Guest</button>
+                </div>
+
+                <!-- Active Profile Info & Sign Out Panel (Shown when user is authenticated) -->
+                <div id="logged-in-panel" class="auth-form hidden">
+                    <div class="logged-user-details-box">
+                        <div class="user-avatar-lg" id="modal-user-avatar">U</div>
+                        <h4 id="modal-user-name">User</h4>
+                        <p id="modal-user-email">email@example.com</p>
+                        <span class="badge success" id="modal-user-role">Member</span>
+                    </div>
+                    <button id="modal-logout-btn" class="rulewise-btn danger btn-block" style="margin-top: 14px;">Log Out of RuleWise</button>
+                </div>
+
+                <div id="auth-error-msg" class="auth-error hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Create Custom Domain -->
+    <div id="domain-modal" class="modal-backdrop hidden">
+        <div class="rulewise-modal-card">
+            <div class="modal-header">
+                <h3>Create Custom Domain</h3>
+                <button class="icon-btn modal-close-btn" id="domain-modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="create-domain-form">
+                    <div class="form-group">
+                        <label for="new-dom-name">Domain Name</label>
+                        <input type="text" id="new-dom-name" class="form-control" placeholder="e.g. Health Insurance Eligibility" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-dom-slug">Slug Identifier</label>
+                        <input type="text" id="new-dom-slug" class="form-control" placeholder="e.g. health-insurance" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-dom-category">Category</label>
+                        <select id="new-dom-category" class="form-control">
+                            <option value="education">Education</option>
+                            <option value="finance">Finance & Loans</option>
+                            <option value="recruitment">Recruitment & HR</option>
+                            <option value="compliance">Business Compliance</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="custom" selected>Custom</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-dom-desc">Description</label>
+                        <textarea id="new-dom-desc" class="form-control" rows="2" placeholder="Purpose and regulatory scope of this domain..."></textarea>
+                    </div>
+                    <button type="submit" class="rulewise-btn primary btn-block">Create Domain</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Trace / Explainability Details -->
+    <div id="trace-modal" class="modal-backdrop hidden">
+        <div class="rulewise-modal-card modal-lg">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="status-dot green"></div>
+                    <h3>Deterministic Decision Trace</h3>
+                </div>
+                <button class="icon-btn modal-close-btn" id="trace-modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body" id="trace-modal-content"></div>
+        </div>
+    </div>
+
+    <!-- Application Controller -->
+    <script src="js/app.js"></script>
 </body>
 </html>

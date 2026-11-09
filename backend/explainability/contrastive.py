@@ -96,6 +96,35 @@ def _extract_blocking_conditions(
     return blocking
 
 
+def _resolve_fact_value(facts: Dict[str, Any], path: str) -> Any:
+    """Resolve a fact path (flat or dotted) against facts dictionary."""
+    if not path:
+        return None
+    if path in facts:
+        val = facts[path]
+        return val.value if hasattr(val, "value") else val
+    current = facts
+    for segment in path.split("."):
+        if isinstance(current, dict) and segment in current:
+            current = current[segment]
+        else:
+            return None
+    return current.value if hasattr(current, "value") else current
+
+
+def _has_fact_path(facts: Dict[str, Any], path: str) -> bool:
+    """Check if fact path exists in facts dictionary (flat or dotted)."""
+    if path in facts:
+        return True
+    current = facts
+    for segment in path.split("."):
+        if isinstance(current, dict) and segment in current:
+            current = current[segment]
+        else:
+            return False
+    return True
+
+
 def _collect_failing_leaves(
     condition: Any,
     facts: Dict[str, Any],
@@ -104,7 +133,7 @@ def _collect_failing_leaves(
     """Recursively collect SimpleCondition leaves that evaluate to False."""
     if isinstance(condition, SimpleCondition):
         op_str = _normalize_operator_str(condition.operator)
-        actual = facts.get(condition.field)
+        actual = _resolve_fact_value(facts, condition.field)
         result = _eval_op(actual, op_str, condition.value)
         if not result:
             acc.append(ConditionExplanation(
@@ -138,7 +167,7 @@ def _collect_failing_leaves(
             raw_leaf_op = condition.get("operator")
             operator = _normalize_operator_str(raw_leaf_op)
             expected = condition.get("value")
-            actual = facts.get(fact_path)
+            actual = _resolve_fact_value(facts, fact_path)
             result = _eval_op(actual, operator, expected)
             if not result:
                 acc.append(ConditionExplanation(
@@ -195,7 +224,7 @@ def _collect_missing_fact_paths(
             continue
         paths = _extract_leaf_paths(rule.condition)
         for path in paths:
-            if path not in final_facts and path not in missing:
+            if not _has_fact_path(final_facts, path) and path not in missing:
                 missing.append(path)
 
     return sorted(missing)

@@ -1,187 +1,233 @@
-# RuleWise AI
+# RuleWise AI — Complete Production System (v1.0.0)
 
-RuleWise AI is an explainable hybrid Neuro-Symbolic AI Rule Engine and Advisory Assistant designed to evaluate complex academic and administrative policies, combine symbolic forward-chaining rule evaluation with natural language explanation, and support what-if policy simulations.
+**RuleWise AI** is an enterprise-grade, explainable Neuro-Symbolic Artificial Intelligence Platform. It couples natural-language conversational AI (powered by Google Gemini) with a deterministic, authoritative rule engine, an interactive visual rule studio, multi-domain governance, and deep reasoning explainability traces.
 
-## Project Status
+---
 
-- **Current Phase**: Phase 5 (Explainability and Reasoning Trace)
-- Phase 1 (Scaffolding), Phase 2 (Knowledge Base), Phase 3 (Rule Engine), Phase 4 (Inference Engine), and Phase 5 (Explainability) are implemented and verified.
+## 1. Core Architecture & Neuro-Symbolic Principle
 
-## Phase 2: Knowledge Base Layer
+RuleWise AI enforces a strict neuro-symbolic separation of concerns:
 
-The Knowledge Base is a deterministic, in-memory repository and validation layer for academic domain entities and declarative policy rules.
+```
+[User Natural Language Query]
+           │
+           ▼
+[AI Layer (Gemini NLP / Parser)] ─── Extracts ───► [Structured Facts & Entity Query]
+                                                              │
+                                                              ▼
+                                             [Deterministic Symbolic Engine]
+                                                ├── Knowledge Base & Facts
+                                                ├── Declarative Rule Base
+                                                ├── Forward-Chaining Engine
+                                                └── Conflict Resolution
+                                                              │
+                                                              ▼
+                                                    [Authoritative Decision]
+                                                              │
+                                                              ▼
+[Natural Language Response] ◄── Grounded in ─── [Explainability Trace Layer]
+ (Strictly Preserves Result)                       (Why / Why-Not Chains)
+```
 
-### Capabilities and Storage
-- **Student Data (`students.json`)**: Profiles containing identifier, name, GPA, completed courses, verified skills, and academic status.
-- **Course Data (`courses.json`)**: Course offerings including identifier, name, minimum GPA requirements, prerequisites, and required skills.
-- **Active Rules (`active_rules.json`)**: Declarative rules structured with conditions and consequences governing academic eligibility.
-- **Staged Rules (`staged_rules.json`)**: Proposed or unpromoted rules isolated from active policy.
-- **Schema Validation**: Strongly typed and validated using Pydantic v2 models (`Student`, `Course`, `Rule`, `Condition`, `Consequence`).
+### Key Principles:
+1. **Symbolic Authority**: The rule engine is the sole decision authority. The language model **never** invents rules, modifies thresholds, or overrides deterministic decisions.
+2. **Deterministic & Offline**: The core inference engine executes without network or LLM dependencies using forward chaining, salience prioritization, specificity ranking, and recency tracking.
+3. **No `eval()` / `exec()`**: Rules are declarative data structures validated by Pydantic. Dynamic code execution is strictly prohibited.
+4. **Injection Resistant**: Prompt injections cannot alter decisions because facts and rules reside strictly in isolated symbolic memory.
 
-### Boundaries & Design Principles
-- **No Reasoning / Inference**: The Knowledge Base strictly stores, validates, loads, and retrieves structured data. It does **not** evaluate IF-THEN conditions, determine student eligibility, or resolve rule conflicts.
-- **Security**: Data is never executed as code (`eval()`, `exec()`, or dynamic imports are strictly prohibited).
-- **Determinism**: Loading the same files produces equivalent data with zero randomness or external API dependencies.
+---
 
-## Phase 3: Declarative Rule Engine
+## 2. Platform Capabilities
 
-Phase 3 implements the deterministic, offline evaluation engine for declarative rules.
+- **Hybrid Conversational Assistant**: ChatGPT-style natural dialogue for general knowledge assistance, seamlessly dispatching policy queries to the symbolic engine with clear visual labelling.
+- **Multi-Domain Management**: Expandable, domain-independent architecture supporting:
+  - Academic Policy & Course Eligibility (Official)
+  - Retail Loan & Credit Underwriting (Official)
+  - Recruitment & HR Screening (Official)
+  - Merit & Need-Based Scholarships (Official)
+  - Enterprise Compliance & Data Governance (Official)
+  - Custom User-Defined Domains (Created via UI or API)
+- **Visual Rule Studio**: Intuitive IF-THEN rule builder with comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `IN`), logical grouping (`AND`, `OR`), priority configuration, live JSON preview, and instant rule testing.
+- **Official vs. Personal Rule Libraries**: Role-based governance where official rules are verified, versioned, and immutable by non-admin users, while personal rules can be authored, tested, edited, and deleted freely.
+- **What-If Scenario Simulator**: Isolates working memory via `ForkManager` and runs `DeltaAnalyzer` to compare baseline vs. hypothetical outcomes, reporting newly fired rules, ceased rules, and derived fact changes.
+- **Open Access & Authentication**: Zero-friction guest mode for instant exploration without registration, plus optional user registration and secure login (PBKDF2-HMAC-SHA256 password hashing, signed Bearer tokens).
+- **Audit Trails & Decision History**: Complete provenance tracking of past evaluations with input facts, fired rule sequences, and step-by-step reasoning chains.
 
-### Capabilities
-- **Operators Layer (`backend/engine/operators.py`)**: Explicit, safe comparison dispatch without `eval()`:
-  - Supported comparison operators: `==`, `!=`, `>`, `>=`, `<`, `<=`, `IN` (handles scalar-in-collection and collection-membership).
-  - Strongly typed with `InvalidComparisonError` and `UnsupportedOperatorError`.
-- **Working Memory (`backend/engine/working_memory.py`)**: Isolated in-memory fact storage with safe dot-separated path resolution (e.g. `student.gpa`, `student.skills`, `student.completed_courses`).
-- **Condition Evaluator (`backend/engine/condition_evaluator.py`)**: Evaluates Boolean condition trees against working memory facts:
-  - Supported Boolean operators: `AND`, `OR`, `NOT` (including arbitrary nested trees).
-  - Purely data-driven with strict rejection of malformed or unknown condition nodes.
-- **Rule Matcher (`backend/engine/rule_matcher.py`)**: Tests whether a validated rule's condition is satisfied by facts in working memory.
-- **Consequence & Single-Rule Execution (`backend/engine/inference_engine.py`)**:
-  - Evaluates rules and asserts structured derived facts (e.g. `{"student.eligible_for_ai": true}`).
-  - Provides primitive interfaces: `evaluate_rule(rule, wm)` and `apply_rule(rule, wm)`.
+---
 
-### Strict Security & Boundaries
-- **No Executable Code**: Rules are pure data. `eval()`, `exec()`, `compile()`, and dynamic imports are strictly barred.
-- **No LLM / Offline**: The rule engine is the deterministic final authority for policy evaluation and never calls Gemini or external network services.
+## 3. Technology Stack
 
-## Phase 4: Deterministic Forward-Chaining Inference Engine
+- **Backend**: Python 3.13+, FastAPI, Uvicorn, Pydantic v2, Pydantic-Settings
+- **Symbolic Inference**: Pure Python forward chaining, cycle detection, state hashing, WorkingMemory isolation
+- **Language Model**: Google Gemini API via official `google-genai` SDK with smart deterministic fallback
+- **Database**: SQLite with WAL mode, foreign keys, parameter binding, thread-safe connection pooling (PostgreSQL compatible)
+- **Frontend**: Modern Minimal SaaS UI (HTML5, responsive CSS3 with Inter typography, modular Vanilla JS)
+- **Testing**: Pytest, Httpx (275 automated tests)
 
-Phase 4 extends the Phase 3 single-rule primitives into a full forward-chaining inference system capable of multi-step reasoning to a stable fixed point.
+---
 
-### Capabilities
+## 4. Local Installation & Startup Guide
 
-- **Forward Chaining (`infer()`)**: Starts with initial facts in Working Memory, evaluates all active rules, fires matching rules, asserts derived facts, and repeats until no new rules match (fixed point) or a safety limit is reached.
-- **Conflict Resolution** (deterministic, 4-level sort key applied on every cycle):
-  1. **Salience / Priority** — higher integer `priority` fires first.
-  2. **Specificity** — rule with more atomic conditions in its condition tree fires first.
-  3. **Recency** — rule depending on the most recently derived fact fires first.
-  4. **Rule ID** — lexicographic ascending sort as the final tie-breaker.
-- **Cycle Detection**: State signature (deterministic JSON hash of all working memory facts) is recorded after every rule firing. A repeated signature triggers `termination_reason = "cycle_detected"`.
-- **Max Depth Enforcement**: Configurable `max_depth` parameter (default 50) caps the number of rule firings per run. Exits with `termination_reason = "max_depth_reached"`.
-- **Negative Preclusion**: Once a fact is asserted as `False`, subsequent `True` assertions for the same path have no effect — order-independent and deterministic.
-- **State Isolation**: `infer()` clones the caller's `WorkingMemory` before execution. The original working memory is never mutated.
-- **Structured Result (`InferenceResult`)**:
-  - `final_facts` — complete working memory after inference.
-  - `derived_facts` — all newly asserted facts produced during the run.
-  - `fired_rule_ids` — ordered list of rule IDs that fired.
-  - `derivation_history` — `DerivationStep` records, each capturing step number, rule ID/name, matched condition, derived facts, and source facts.
-  - `fact_provenance` — `FactProvenance` map tracking origin (initial vs. derived, step number, source rule ID) for every fact.
-  - `termination_reason` — `"fixed_point"`, `"cycle_detected"`, or `"max_depth_reached"`.
-- **Working Memory Extensions**:
-  - `get_fact_step(path)` — returns the sequence step at which a fact was asserted (0 = initial).
-  - `get_provenance(path)` / `get_all_provenance()` — audit trail for individual or all facts.
-  - `clone()` — deep copy for state isolation.
-
-### Phase 4 Security & Boundaries
-- No `eval()`, `exec()`, `compile()`, subprocess calls, dynamic imports, network calls, or LLM calls anywhere in the inference engine.
-
-## Phase 5: Explainability and Reasoning Trace
-
-Phase 5 implements a deterministic, evidence-based explainability layer that converts the raw machine-readable inference history from Phase 4 into structured, auditable explanations.
-
-### Capabilities
-
-- **Reasoning Traces (`backend/explainability/trace_builder.py`)**:
-  - `build_trace(result, rules, conclusion)`: Compiles the full chronological sequence of rule firings, preserving step numbers, rule names/IDs, priorities, condition evaluations, source facts, and newly asserted derived facts into a frozen `Explanation` model.
-  - Information-preserving: Never loses details from the underlying Phase 4 `InferenceResult`.
-- **Condition Explanations (`explain_condition()`)**:
-  - Explains leaf comparisons (`ConditionExplanation`) showing fact path, actual value from working memory, comparison operator, target expected value, and the boolean result.
-  - Explains compound Boolean conditions (`CompoundConditionExplanation`) across `AND`, `OR`, and `NOT`, preserving recursive hierarchy, sub-condition outcomes, and inverted boolean results.
-- **Fact & Rule Provenance (`build_fact_provenance()`)**:
-  - Traces whether every fact was part of the `initial` working memory or was `derived` by a specific rule at a specific inference step.
-  - Enriches records with human-readable source rule names.
-- **WHY Explanations (`build_why()`)**:
-  - Reconstructs backward derivation chains from a final conclusion back through intermediate derived facts to the root initial facts that made it possible.
-- **WHY-NOT Explanations (`build_why_not()`)**:
-  - Pinpoints why a desired conclusion was not reached by evaluating candidate rules, identifying missing facts, and extracting exact blocking conditions that failed.
-  - Insufficient-evidence handling: If no candidate rules exist to derive the fact, returns a structured `insufficient_evidence` result without hallucinating reasons.
-- **Contrastive Explanation Structure (`build_contrastive()`)**:
-  - Lays the structural foundation for "Why X instead of Y?" queries by comparing differentiating rules and facts using existing inference evidence.
-  - Embeds structured `why_a` and `why_not_b` explanations.
-
-### Strict Boundaries & Design Principles
-- **Inference Engine Remains Authority**: The explainability layer only interprets recorded evidence. It never alters facts, modifies rules, or reruns inference with altered logic.
-- **Purely Structured Data**: Natural-language generation is **NOT** part of Phase 5.
-- **Offline & Deterministic**: Zero randomness, zero timestamps, zero external API calls.
-- **No LLMs**: Gemini integration belongs to **Phase 6**.
-- **No What-If Simulations**: Counterfactual what-if simulation belongs to **Phase 9**.
-
-
-## Getting Started
-
-### 1. Prerequisites
-
-- Python 3.11+
+### Prerequisites
+- Python 3.10+ (Python 3.13 recommended)
 - Git
 
-### 2. Create the Virtual Environment
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/your-org/rulewise-ai.git
+cd RuleWise-AI
+```
 
-Create an isolated virtual environment:
-
+### Step 2: Set Up Virtual Environment & Dependencies
 ```bash
 # Windows
 python -m venv .venv
-.venv\Scripts\activate
+.\.venv\Scripts\activate
+pip install -r requirements.txt
 
 # Linux / macOS
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-Install the core dependencies required for Phase 1:
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
-
-Copy the template configuration file:
-
+### Step 3: Configure Environment Variables
+Copy `.env.example` to `.env`:
 ```bash
-# Windows (PowerShell)
-Copy-Item .env.example .env
+# Windows
+copy .env.example .env
 
 # Linux / macOS
 cp .env.example .env
 ```
 
-> **Note**: Never commit your `.env` file or real API keys to version control.
+Edit `.env` and set your Google Gemini API key:
+```env
+GEMINI_API_KEY=AIzaSy...your_actual_key_here
+GEMINI_MODEL=gemini-2.5-flash
+APP_ENV=development
+APP_HOST=0.0.0.0
+APP_PORT=8000
+DEBUG=True
+LLM_TIMEOUT_SECONDS=3.5
+```
+*(Note: If no API key is provided, the platform automatically activates its built-in deterministic fallback engine without interruption).*
 
-### 5. Run Tests
-
-Execute the test suite using pytest:
-
+### Step 4: Run the Application
 ```bash
-python -m pytest
+# Windows
+.\.venv\Scripts\python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+
+# Linux / macOS
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### 6. Start the FastAPI Server
+Open your browser and navigate to:
+**`http://127.0.0.1:8000/`**
 
-Run the development server with Uvicorn:
+---
+
+## 5. Running the Automated Test Suite
+
+The comprehensive test suite includes 275 tests covering health checks, API endpoints, rule evaluation, inference engine, conflict resolution, explainability traces, simulation deltas, authentication, and security protections:
 
 ```bash
-uvicorn backend.main:app --reload
+# Run all tests
+.\.venv\Scripts\python -m pytest
+
+# Run with verbose output
+.\.venv\Scripts\python -m pytest -v
 ```
 
-The server will start at `http://127.0.0.1:8000`.
+---
 
-### 7. Health Endpoint
+## 6. REST API Reference
 
-Verify that the application is running by querying the health check endpoint:
+### Health & Telemetry
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Root health check |
+| `GET` | `/api/v1/health` | API v1 subsystem readiness |
+| `GET` | `/api/v1/chat/status` | Provider status, fallback readiness, and symbolic engine state |
+| `GET` | `/api/v1/knowledge/stats` | System-wide statistics and metrics |
 
-- **URL**: `GET http://127.0.0.1:8000/health`
-- **Sample Response**:
-  ```json
-  {
-    "status": "ok",
-    "project": "RuleWise AI",
-    "phase": 1
-  }
-  ```
+### Chat & Advisory
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/chat` | Process natural language inquiry through neuro-symbolic pipeline |
+| `GET` | `/api/v1/chat/conversations` | List conversation threads |
+| `GET` | `/api/v1/chat/conversations/{id}/messages` | Get message history for a conversation |
 
-API interactive documentation is also available at:
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
+### Domains & Governance
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/domains` | List official and personal domains |
+| `GET` | `/api/v1/domains/{id_or_slug}` | Get domain details and schema fields |
+| `POST` | `/api/v1/domains` | Create a new custom domain |
+| `DELETE` | `/api/v1/domains/{id}` | Delete a user-created domain |
+
+### Rules & Authoring
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/rules` | List rules (filter by domain, status, official) |
+| `GET` | `/api/v1/rules/{id}` | Get rule details |
+| `POST` | `/api/v1/rules` | Create a new validated rule |
+| `PUT` | `/api/v1/rules/{id}` | Update existing rule |
+| `DELETE` | `/api/v1/rules/{id}` | Delete rule |
+| `POST` | `/api/v1/rules/validate` | Validate condition structure without persisting |
+| `POST` | `/api/v1/rules/test` | Test single rule against sample facts |
+
+### What-If Simulation
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/simulation/run` | Execute forked simulation and analyze delta |
+
+### Decision History
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/history` | List historical evaluation records |
+| `GET` | `/api/v1/history/{id}` | Retrieve complete reasoning trace and evidence JSON |
+
+### Authentication & Sessions
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/auth/register` | Register new user account |
+| `POST` | `/api/v1/auth/login` | Authenticate and obtain JWT Bearer token |
+| `POST` | `/api/v1/auth/guest` | Create immediate guest access session |
+| `GET` | `/api/v1/auth/me` | Get current user profile |
+
+---
+
+## 7. Security & Compliance Highlights
+
+- **Input Sanitization**: User messages stripped of null bytes and non-printable control characters; length-bounded to 2000 chars.
+- **SQL Injection Prevention**: All database queries strictly parameterized via sqlite3 / DB API.
+- **Dynamic Execution Prohibition**: No `eval()`, `exec()`, or dynamic module loading anywhere in the codebase.
+- **Credential Protection**: Secrets and API keys masked in all logs and status endpoints; never returned to frontend.
+- **Password Security**: PBKDF2-HMAC-SHA256 with 100,000 iterations and 16-byte cryptographically secure salts.
+- **Tamper-Proof Tokens**: Signed Bearer access tokens with HMAC-SHA256 signatures and expiry verification.
+- **Prompt Injection Defense**: Evaluator enforces rules directly in working memory; natural language cannot bypass thresholds or falsify facts.
+
+---
+
+## 8. Production Preparation & Deployment
+
+1. **Environment Variables**: Use Docker secrets or a secrets manager (e.g. AWS Secrets Manager, Google Secret Manager) to inject `GEMINI_API_KEY`.
+2. **Reverse Proxy**: Place behind Nginx, Caddy, or Cloudflare with TLS termination and rate limiting.
+3. **Database Migration**: The database manager uses SQLite WAL mode with zero configuration for single-instance containers. For multi-instance clustered deployments, migrate the repository interface to PostgreSQL.
+4. **Containerization**:
+   ```dockerfile
+   FROM python:3.13-slim
+   WORKDIR /app
+   COPY requirements.txt .
+   RUN pip install --no-cache-dir -r requirements.txt
+   COPY . .
+   EXPOSE 8000
+   CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+   ```
+
+---
+
+## 9. License
+
+RuleWise AI is distributed under the MIT License.

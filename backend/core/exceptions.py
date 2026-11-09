@@ -109,3 +109,43 @@ class MalformedRuleError(EngineError, ValueError):
     """Raised when a rule definition has an invalid, incomplete, or corrupted structure."""
 
     pass
+
+
+# -----------------------------------------------------------------------------
+# Natural Language Processing & AI Layer Exceptions (Phase 6)
+# -----------------------------------------------------------------------------
+
+class NLPError(RuleWiseError):
+    """Base exception for Natural Language Processing and AI layer operations."""
+
+    pass
+
+
+class ProviderError(NLPError):
+    """Base exception for language model provider failures."""
+
+    pass
+
+
+class ProviderUnavailableError(ProviderError):
+    """Raised when an LLM provider is unavailable, unconfigured, or unreachable."""
+
+    pass
+
+
+class InvalidModelResponseError(NLPError):
+    """Raised when the LLM produces a malformed, invalid, or unparseable response."""
+
+    pass
+
+
+class StructuredQueryValidationError(NLPError):
+    """Raised when a generated or extracted structured query fails validation."""
+
+    pass
+
+
+class QueryExecutionError(NLPError):
+    """Raised when structured query orchestration or fact resolution fails."""
+
+    pass
