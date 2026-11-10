@@ -16,10 +16,27 @@ from typing import Any, Dict, Generator, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# Determine database path
-DB_DIR = Path(__file__).resolve().parent.parent / "data"
-DB_DIR.mkdir(parents=True, exist_ok=True)
-DEFAULT_DB_PATH = DB_DIR / "rulewise.db"
+# Determine database path (with Vercel/Serverless /tmp support)
+bundled_db_dir = Path(__file__).resolve().parent.parent / "data"
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    import shutil
+    tmp_db_dir = Path("/tmp") / "rulewise_data"
+    tmp_db_dir.mkdir(parents=True, exist_ok=True)
+    DEFAULT_DB_PATH = tmp_db_dir / "rulewise.db"
+    bundled_db = bundled_db_dir / "rulewise.db"
+    if bundled_db.exists() and not DEFAULT_DB_PATH.exists():
+        try:
+            shutil.copy2(bundled_db, DEFAULT_DB_PATH)
+            logger.info("Copied bundled database to /tmp: %s", DEFAULT_DB_PATH)
+        except Exception as e:
+            logger.warning("Could not copy bundled db to /tmp: %s", e)
+else:
+    db_env_path = os.environ.get("DATABASE_PATH")
+    if db_env_path:
+        DEFAULT_DB_PATH = Path(db_env_path)
+    else:
+        bundled_db_dir.mkdir(parents=True, exist_ok=True)
+        DEFAULT_DB_PATH = bundled_db_dir / "rulewise.db"
 
 
 class DatabaseManager:
@@ -38,7 +55,10 @@ class DatabaseManager:
         )
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
-        conn.execute("PRAGMA journal_mode = WAL;")
+        try:
+            conn.execute("PRAGMA journal_mode = WAL;")
+        except Exception:
+            conn.execute("PRAGMA journal_mode = DELETE;")
         conn.execute("PRAGMA synchronous = NORMAL;")
         return conn
 

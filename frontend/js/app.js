@@ -18,7 +18,8 @@
     // -------------------------------------------------------------------------
     // 1. Configuration, Local Storage & State
     // -------------------------------------------------------------------------
-    const API_BASE = (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '8000'))
+    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const API_BASE = (window.location.protocol === 'file:' || (isLocalDev && window.location.port && window.location.port !== '8000'))
         ? 'http://127.0.0.1:8000'
         : '';
 
