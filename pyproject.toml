@@ -1,0 +1,8 @@
+[project]
+name = "rulewise-ai"
+version = "1.0.0"
+description = "Explainable Neuro-Symbolic AI Platform"
+requires-python = ">=3.10"
+
+[tool.vercel]
+entrypoint = "backend/main.py"
