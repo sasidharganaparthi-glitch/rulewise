@@ -179,25 +179,31 @@ class GeminiProvider(LanguageModelProvider):
 
         last_error = None
         for m in candidate_models:
-            try:
-                from google.genai import types
+            for attempt in range(2):
+                try:
+                    from google.genai import types
 
-                config = types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                )
-                response = client.models.generate_content(
-                    model=m,
-                    contents=prompt,
-                    config=config,
-                )
-                if response and response.text:
-                    return response.text.strip()
-            except (ProviderUnavailableError, InvalidModelResponseError):
-                raise
-            except Exception as exc:
-                last_error = exc
-                logger.warning("Gemini model '%s' failed in generate_text (%s); trying fallback.", m, exc)
-                continue
+                    config = types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                    )
+                    response = client.models.generate_content(
+                        model=m,
+                        contents=prompt,
+                        config=config,
+                    )
+                    if response and response.text:
+                        return response.text.strip()
+                except (ProviderUnavailableError, InvalidModelResponseError):
+                    raise
+                except Exception as exc:
+                    last_error = exc
+                    err_str = str(exc)
+                    if ("503" in err_str or "UNAVAILABLE" in err_str) and attempt == 0:
+                        import time
+                        time.sleep(0.4)
+                        continue
+                    logger.warning("Gemini model '%s' failed in generate_text (%s); trying fallback.", m, exc)
+                    break
 
         logger.error("All Gemini candidate models failed in generate_text: %s", last_error)
         raise ProviderError(f"Gemini API call failed: {last_error}") from last_error
@@ -236,43 +242,50 @@ class GeminiProvider(LanguageModelProvider):
 
         last_error = None
         for m in candidate_models:
-            try:
-                from google.genai import types
-                from google.genai._transformers import t_schema
-
-                schema_obj = t_schema(None, response_schema)
-                self._clean_schema_additional_properties(schema_obj)
-
-                config = types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=schema_obj,
-                    system_instruction=system_instruction,
-                )
-                response = client.models.generate_content(
-                    model=m,
-                    contents=prompt,
-                    config=config,
-                )
-                raw_text = response.text if response else None
-                if not raw_text:
-                    continue
-
+            for attempt in range(2):
                 try:
-                    return response_schema.model_validate_json(raw_text)
-                except ValidationError as val_err:
-                    raise InvalidModelResponseError(
-                        f"Gemini response failed Pydantic validation: {val_err}"
-                    ) from val_err
-                except (ValueError, json.JSONDecodeError) as json_err:
-                    raise InvalidModelResponseError(
-                        f"Gemini response could not be parsed as JSON: {json_err}"
-                    ) from json_err
+                    from google.genai import types
+                    from google.genai._transformers import t_schema
 
-            except (ProviderUnavailableError, InvalidModelResponseError):
-                raise
-            except Exception as exc:
-                last_error = exc
-                logger.warning("Gemini model '%s' failed in generate_structured (%s); trying fallback.", m, exc)
+                    schema_obj = t_schema(None, response_schema)
+                    self._clean_schema_additional_properties(schema_obj)
+
+                    config = types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=schema_obj,
+                        system_instruction=system_instruction,
+                    )
+                    response = client.models.generate_content(
+                        model=m,
+                        contents=prompt,
+                        config=config,
+                    )
+                    raw_text = response.text if response else None
+                    if not raw_text:
+                        break
+
+                    try:
+                        return response_schema.model_validate_json(raw_text)
+                    except ValidationError as val_err:
+                        raise InvalidModelResponseError(
+                            f"Gemini response failed Pydantic validation: {val_err}"
+                        ) from val_err
+                    except (ValueError, json.JSONDecodeError) as json_err:
+                        raise InvalidModelResponseError(
+                            f"Gemini response could not be parsed as JSON: {json_err}"
+                        ) from json_err
+
+                except (ProviderUnavailableError, InvalidModelResponseError):
+                    raise
+                except Exception as exc:
+                    last_error = exc
+                    err_str = str(exc)
+                    if ("503" in err_str or "UNAVAILABLE" in err_str) and attempt == 0:
+                        import time
+                        time.sleep(0.4)
+                        continue
+                    logger.warning("Gemini model '%s' failed in generate_structured (%s); trying fallback.", m, exc)
+                    break
                 continue
 
         logger.error("All Gemini candidate models failed in generate_structured: %s", last_error)

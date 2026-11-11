@@ -233,8 +233,8 @@ def login(req: LoginRequest, request: Request) -> AuthResponse:
             detail="Invalid username/email or password.",
         )
 
-    # Strictly verify Admin Login requirement
-    if req.is_admin_login and user.get("role") != "admin":
+    # Strictly verify Admin Login requirement (allow both owner and admin)
+    if req.is_admin_login and user.get("role") not in ("admin", "owner"):
         login_repo.record_login(
             username=user["username"],
             email=user.get("email"),

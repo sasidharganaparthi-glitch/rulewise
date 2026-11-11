@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: Optional[str] = None
 
     # Administrator and Owner configuration
-    OWNER_EMAIL: str = "sasiganaparthi@gmail.com"
-    ADMIN_EMAIL: str = "sasiganaparthi@gmail.com"
-    ADMIN_INITIAL_PASSWORD: Optional[str] = None
+    OWNER_EMAIL: str = "sasidharganaparthi@gmail.com"
+    ADMIN_EMAIL: str = "sasidharganaparthi@gmail.com"
+    ADMIN_INITIAL_PASSWORD: str = "sasiadmin"
 
     # Application server configuration
     APP_ENV: str = "development"

@@ -1,7 +1,7 @@
 """Seed initial official domains, declarative rules, and default accounts in RuleWise AI.
 
 Preserves existing academic rules while introducing multi-domain official collections:
-1. Academic Policy & Course Eligibility (Official)
+1. RuleWise Policy & Course Eligibility (Official)
 2. University Admissions (Official)
 3. Merit & Need-Based Scholarships (Official)
 4. Recruitment & HR Screening (Official)
@@ -30,21 +30,35 @@ def seed_database(db: DatabaseManager) -> None:
     from backend.core.config import get_settings
     settings = get_settings()
 
-    owner_email = getattr(settings, "OWNER_EMAIL", "sasiganaparthi@gmail.com")
-    owner_pwd = getattr(settings, "ADMIN_INITIAL_PASSWORD", None) or "Admin#RuleWise2026"
+    owner_email = getattr(settings, "OWNER_EMAIL", "sasidharganaparthi@gmail.com")
+    owner_pwd = getattr(settings, "ADMIN_INITIAL_PASSWORD", "sasiadmin")
 
-    owner = user_repo.get_by_email(owner_email) or user_repo.get_by_username("sasiganaparthi")
+    # Seed primary owner/admin account: sasiadmin
+    owner = (
+        user_repo.get_by_username("sasiadmin")
+        or user_repo.get_by_email("sasidharganaparthi@gmail.com")
+        or user_repo.get_by_email("sasiganaparthi@gmail.com")
+        or user_repo.get_by_username("sasiganaparthi")
+    )
     if not owner:
         owner = user_repo.create_user(
-            username="sasiganaparthi",
+            username="sasiadmin",
             password=owner_pwd,
             email=owner_email,
             role="owner",
         )
-        logger.info("Provisioned initial authorized owner account: %s", owner_email)
-    elif owner.get("role") != "owner":
-        user_repo.update_user_role(owner["id"], "owner")
-        logger.info("Elevated account %s to owner role.", owner_email)
+        logger.info("Provisioned initial authorized owner account: sasiadmin (%s)", owner_email)
+    else:
+        with db.transaction() as conn:
+            conn.execute(
+                "UPDATE users SET username = 'sasiadmin', email = ?, role = 'owner' WHERE id = ?;",
+                (owner_email, owner["id"]),
+            )
+        user_repo.update_password(owner["id"], owner_pwd)
+        owner["username"] = "sasiadmin"
+        owner["email"] = owner_email
+        owner["role"] = "owner"
+        logger.info("Synchronized owner account sasiadmin with initial credentials.")
 
     admin = owner
 
@@ -78,7 +92,7 @@ def seed_database(db: DatabaseManager) -> None:
             created_by=admin["id"],
             domain_id="dom_academic",
         )
-        logger.info("Created official domain: Academic Policy")
+        logger.info("Created official domain: RuleWise Policy")
 
         # Load existing active_rules.json if present
         data_path = Path(__file__).resolve().parent.parent / "knowledge" / "data" / "active_rules.json"

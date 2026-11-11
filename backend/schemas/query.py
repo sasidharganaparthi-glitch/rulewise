@@ -89,6 +89,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional attached files with extracted text or metadata",
     )
+    attached_files: Optional[list[dict[str, Any]]] = Field(
+        default=None,
+        description="Alias for attached files sent by web clients",
+    )
 
 
 class ChatResponse(BaseModel):

@@ -928,11 +928,14 @@
                     </div>
                     <div class="form-group">
                         <label for="admin-login-username">Admin Email / Username <span class="required-star">*</span></label>
-                        <input type="text" id="admin-login-username" class="form-control" placeholder="sasiganaparthi@gmail.com" required>
+                        <input type="text" id="admin-login-username" class="form-control" placeholder="sasiadmin or admin email" required>
                     </div>
                     <div class="form-group">
                         <label for="admin-login-password">Admin Password <span class="required-star">*</span></label>
                         <input type="password" id="admin-login-password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                    <div style="text-align:right;margin-bottom:12px;">
+                        <button type="button" id="admin-forgot-password-link" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;padding:0;">Forgot password?</button>
                     </div>
                     <button type="submit" class="rulewise-btn primary btn-block" style="background:#ef4444;">Authenticate as Administrator</button>
                 </form>
@@ -968,7 +971,25 @@
                         <p id="modal-user-email">email@example.com</p>
                         <span class="badge success" id="modal-user-role">Member</span>
                     </div>
-                    <button id="modal-logout-btn" class="rulewise-btn danger btn-block" style="margin-top: 14px;">Log Out of RuleWise</button>
+
+                    <!-- Change Password Form -->
+                    <div style="margin-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px; text-align: left;">
+                        <h5 style="margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #f8fafc;">Change Password</h5>
+                        <form id="change-password-form">
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label for="change-cur-pass" style="font-size: 11px;">Current Password</label>
+                                <input type="password" id="change-cur-pass" class="form-control" placeholder="Current password" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label for="change-new-pass" style="font-size: 11px;">New Password</label>
+                                <input type="password" id="change-new-pass" class="form-control" placeholder="New password (min 6 characters)" minlength="6" required>
+                            </div>
+                            <button type="submit" class="rulewise-btn primary btn-block" style="padding: 7px; font-size: 12px;">Update Password</button>
+                            <div id="change-pass-msg" class="hidden" style="margin-top: 8px; font-size: 12px; padding: 6px; border-radius: 4px;"></div>
+                        </form>
+                    </div>
+
+                    <button id="modal-logout-btn" class="rulewise-btn danger btn-block" style="margin-top: 16px;">Log Out of RuleWise</button>
                 </div>
 
                 <div id="auth-error-msg" class="auth-error hidden"></div>

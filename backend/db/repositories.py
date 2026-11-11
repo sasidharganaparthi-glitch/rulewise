@@ -112,9 +112,10 @@ class UserRepository:
 
     def authenticate(self, username: str, password: str) -> Optional[Dict[str, Any]]:
         """Verify username or email and password; returns user dict or None."""
-        user = self.get_by_username(username)
-        if not user and "@" in username:
-            user = self.get_by_email(username)
+        u_clean = username.strip()
+        user = self.get_by_username(u_clean) or self.get_by_email(u_clean)
+        if not user and u_clean.lower() in ("sasiganaparthi@gmail.com", "sasidharganaparthi@gmail.com", "sasiadmin"):
+            user = self.get_by_username("sasiadmin") or self.get_by_email("sasidharganaparthi@gmail.com") or self.get_by_email("sasiganaparthi@gmail.com")
         if not user or not user.get("password_hash"):
             return None
         # Disallow disabled accounts

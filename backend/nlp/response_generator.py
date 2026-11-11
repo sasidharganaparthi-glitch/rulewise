@@ -257,7 +257,7 @@ class ResponseGenerator:
                 else "Free-form conversational AI is currently operating in offline mode because GEMINI_API_KEY is not configured in the environment."
             )
             text = (
-                "RuleWise AI is an explainable neuro-symbolic academic advisory assistant.\n\n"
+                "RuleWise AI is an explainable neuro-symbolic assistant.\n\n"
                 "Available Capabilities:\n"
                 "• Course Eligibility Evaluation: Deterministically check if a student meets GPA, prerequisite, and skill requirements.\n"
                 "• Explainable Reasoning: Transparently inspect why a student is eligible or which specific criteria are blocking enrollment.\n"
@@ -295,7 +295,7 @@ class ResponseGenerator:
             else "(operating in offline fallback mode because the Gemini API key is not configured in the environment)"
         )
         fallback_notice = (
-            "Hello! I am RuleWise AI, an explainable neuro-symbolic academic advisory assistant.\n\n"
+            "Hello! I am RuleWise AI, an explainable neuro-symbolic assistant.\n\n"
             f"General AI conversation is currently unavailable {status_clause}, "
             "but the deterministic rule engine and academic knowledge base are fully operational.\n\n"
             "You can query course eligibility, prerequisite checks, and policy rules, for example:\n"

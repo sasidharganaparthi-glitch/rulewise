@@ -67,11 +67,12 @@ def chat_endpoint(
                 past_messages = []
 
         effective_message = request.message
-        if request.attachments:
+        all_attachments = request.attachments or request.attached_files
+        if all_attachments:
             attachment_notes = []
-            for att in request.attachments:
-                fname = att.get("name", "attachment")
-                content = att.get("content") or att.get("summary") or ""
+            for att in all_attachments:
+                fname = att.get("name") or att.get("filename") or "attachment"
+                content = att.get("content") or att.get("summary") or att.get("text_snippet") or ""
                 if content:
                     attachment_notes.append(f"--- [Attached File: {fname}] ---\n{content}")
             if attachment_notes:

@@ -121,7 +121,16 @@
             if (resp.status === 204) return null;
             const data = await resp.json().catch(() => ({}));
             if (!resp.ok) {
-                const errorMsg = data.detail || data.message || `Request failed with status ${resp.status}`;
+                let errorMsg = `Request failed with status ${resp.status}`;
+                if (Array.isArray(data.detail)) {
+                    errorMsg = data.detail.map(d => (d && (d.msg || d.message)) || JSON.stringify(d)).join('; ');
+                } else if (typeof data.detail === 'string') {
+                    errorMsg = data.detail;
+                } else if (data.detail && typeof data.detail === 'object') {
+                    errorMsg = data.detail.detail || data.detail.message || JSON.stringify(data.detail);
+                } else if (data.message) {
+                    errorMsg = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+                }
                 throw new Error(errorMsg);
             }
             return data;
@@ -967,15 +976,21 @@
         scrollToBottom();
 
         try {
+            const mappedFiles = currentAttachments.map(f => ({
+                file_id: f.file_id,
+                name: f.filename,
+                filename: f.filename,
+                summary: f.summary || '',
+                content: f.extracted_text || '',
+                text_snippet: f.extracted_text ? f.extracted_text.slice(0, 5000) : '',
+            }));
+
             const payload = {
                 message: text || '(attached file inquiry)',
                 domain_id: state.activeDomainId,
                 conversation_id: state.currentConversationId,
-                attached_files: currentAttachments.map(f => ({
-                    file_id: f.file_id,
-                    filename: f.filename,
-                    text_snippet: f.extracted_text ? f.extracted_text.slice(0, 5000) : '',
-                })),
+                attachments: mappedFiles,
+                attached_files: mappedFiles,
             };
 
             const data = await apiRequest('/api/v1/chat', {
@@ -994,8 +1009,12 @@
             updateComposerState();
         } catch (err) {
             skeleton.remove();
+            let rawMsg = (err && err.message) ? String(err.message) : 'An error occurred while processing your message.';
+            if (rawMsg === '[object Object]') {
+                rawMsg = 'Invalid request parameters or server processing issue.';
+            }
             appendAssistantMessage({
-                message: `⚠️ **Advisory Notice:** ${err.message}. Please retry or verify parameters.`,
+                message: `⚠️ **Advisory Notice:** ${rawMsg}. Please retry or verify parameters.`,
             }, true);
             updateComposerState();
         } finally {
@@ -2365,9 +2384,15 @@
 
         // Forgot Password link & Back to Login
         const forgotLink = document.getElementById('forgot-password-link');
+        const adminForgotLink = document.getElementById('admin-forgot-password-link');
         const backToLoginBtn = document.getElementById('back-to-login-btn');
         if (forgotLink) {
             forgotLink.onclick = () => {
+                selectAuthTab(null, formReset);
+            };
+        }
+        if (adminForgotLink) {
+            adminForgotLink.onclick = () => {
                 selectAuthTab(null, formReset);
             };
         }
@@ -2498,12 +2523,47 @@
                         method: 'POST',
                         body: JSON.stringify({ email: em, new_password: p }),
                     });
-                    alert(res.message || 'Password updated successfully!');
+                    alert(res.message || 'Password updated successfully! Please sign in with your new password.');
                     selectAuthTab(tabLogin, formLogin);
                 } catch (err) {
                     if (errBox) {
                         errBox.textContent = err.message;
                         errBox.classList.remove('hidden');
+                    }
+                }
+            };
+        }
+
+        // Change Password Handler for Authenticated Users/Admins
+        const changePassForm = document.getElementById('change-password-form');
+        if (changePassForm) {
+            changePassForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const cur = document.getElementById('change-cur-pass').value;
+                const next = document.getElementById('change-new-pass').value;
+                const msgBox = document.getElementById('change-pass-msg');
+                if (msgBox) {
+                    msgBox.className = 'hidden';
+                    msgBox.textContent = '';
+                }
+                try {
+                    const res = await apiRequest('/api/v1/auth/change-password', {
+                        method: 'POST',
+                        body: JSON.stringify({ current_password: cur, new_password: next }),
+                    });
+                    if (msgBox) {
+                        msgBox.style.background = 'rgba(34, 197, 94, 0.15)';
+                        msgBox.style.color = '#86efac';
+                        msgBox.textContent = res.message || 'Password updated successfully!';
+                        msgBox.classList.remove('hidden');
+                    }
+                    changePassForm.reset();
+                } catch (err) {
+                    if (msgBox) {
+                        msgBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                        msgBox.style.color = '#fca5a5';
+                        msgBox.textContent = err.message || 'Failed to update password.';
+                        msgBox.classList.remove('hidden');
                     }
                 }
             };
