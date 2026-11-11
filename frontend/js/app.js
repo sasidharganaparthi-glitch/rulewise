@@ -406,7 +406,8 @@
         'file-tools-view': { title: 'File Tools & Converters', sub: 'Document Extraction, Rule Ingestion & File Processing' },
         'domains-view': { title: 'Explore Domains', sub: 'Curated Policy Knowledge Bases & Symbolic Schemas' },
         'studio-view': { title: 'Visual Rule Studio', sub: 'Condition Builder & Symbolic Rule Authoring' },
-        'official-library-view': { title: 'Official Rule Library', sub: 'Audited Institutional Policies & Constraints' },
+        'official-rules-view': { title: 'Official Policy Library', sub: 'Audited Institutional Policies & Constraints' },
+        'official-library-view': { title: 'Official Policy Library', sub: 'Audited Institutional Policies & Constraints' },
         'history-view': { title: 'Decision History', sub: 'Personalized Audit Log & Trace Inspector' },
         'simulator-view': { title: 'What-If Simulator', sub: 'Counterfactual Reasoning & Rule Modification Sandbox' },
         'admin-view': { title: 'Administrator Dashboard', sub: 'Platform Analysis, Official Rules, User Directory & Guardrails' },
@@ -426,11 +427,13 @@
 
         document.querySelectorAll('.view-panel').forEach(panel => {
             panel.classList.add('hidden');
+            panel.classList.remove('active');
         });
 
         const activePanel = document.getElementById(tabId);
         if (activePanel) {
             activePanel.classList.remove('hidden');
+            activePanel.classList.add('active');
         }
 
         document.querySelectorAll('.nav-item').forEach(btn => {
@@ -448,9 +451,10 @@
         if (subEl) subEl.textContent = meta.sub;
 
         if (tabId === 'domains-view') loadDomainsView();
-        if (tabId === 'official-library-view') loadOfficialLibraryView();
+        if (tabId === 'official-rules-view' || tabId === 'official-library-view') loadOfficialLibraryView();
         if (tabId === 'history-view') loadHistoryView();
         if (tabId === 'simulator-view') loadSimulatorView();
+        if (tabId === 'studio-view') loadStudioView();
         if (tabId === 'admin-view') initAdminView();
         if (tabId === 'file-tools-view') initFileTools();
 
@@ -538,7 +542,7 @@
     }
 
     function initChatSearch() {
-        const searchInput = document.getElementById('search-chats-input');
+        const searchInput = document.getElementById('sidebar-chat-search') || document.getElementById('search-chats-input');
         if (!searchInput) return;
         searchInput.addEventListener('input', () => {
             renderRecentChatsList(searchInput.value);
@@ -839,7 +843,7 @@
         const input = document.getElementById('user-input') || document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
         const chatForm = document.getElementById('chat-form');
-        const newChatBtn = document.getElementById('new-chat-btn');
+        const newChatBtn = document.getElementById('sidebar-new-chat-btn') || document.getElementById('new-chat-btn');
         const composerDomainTag = document.getElementById('composer-domain-tag') || document.getElementById('chat-domain-pill');
         const headerDomainPill = document.getElementById('header-domain-pill');
 
@@ -1949,9 +1953,42 @@
         if (!grid) return;
         grid.innerHTML = '<div class="loading-placeholder">Loading decision domains...</div>';
 
+        // Wire create domain modal triggers
+        const openDomModalBtn = document.getElementById('open-create-domain-modal-btn');
+        const domModal = document.getElementById('domain-modal');
+        const closeDomModalBtn = document.getElementById('domain-modal-close-btn');
+        const domForm = document.getElementById('create-domain-form');
+
+        if (openDomModalBtn && domModal) {
+            openDomModalBtn.onclick = () => domModal.classList.remove('hidden');
+        }
+        if (closeDomModalBtn && domModal) {
+            closeDomModalBtn.onclick = () => domModal.classList.add('hidden');
+        }
+        if (domForm && domModal) {
+            domForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('new-dom-name')?.value.trim();
+                const slug = document.getElementById('new-dom-slug')?.value.trim();
+                const category = document.getElementById('new-dom-category')?.value;
+                const desc = document.getElementById('new-dom-desc')?.value.trim();
+                try {
+                    await apiRequest('/api/v1/domains', {
+                        method: 'POST',
+                        body: JSON.stringify({ name, slug, category, description: desc }),
+                    });
+                    domModal.classList.add('hidden');
+                    domForm.reset();
+                    loadDomainsView();
+                } catch (err) {
+                    alert('Failed to create domain: ' + err.message);
+                }
+            };
+        }
+
         try {
             const data = await apiRequest('/api/v1/domains');
-            state.domains = data.items || [];
+            state.domains = Array.isArray(data) ? data : (data.items || []);
             renderDomainsGrid(state.domains);
 
             const pills = document.querySelectorAll('#domain-category-pills .admin-subnav-btn');
@@ -2040,13 +2077,13 @@
     // 15. OFFICIAL RULE LIBRARY (Read-only Institutional Policy View)
     // -------------------------------------------------------------------------
     async function loadOfficialLibraryView() {
-        const wrap = document.getElementById('official-rules-container');
+        const wrap = document.getElementById('official-rules-list') || document.getElementById('official-rules-container');
         if (!wrap) return;
         wrap.innerHTML = '<div class="loading-placeholder">Loading institutional rule catalog...</div>';
 
         try {
-            const data = await apiRequest('/api/v1/rules?domain_id=dom_academic');
-            const rules = data.items || [];
+            const data = await apiRequest('/api/v1/rules');
+            const rules = Array.isArray(data) ? data : (data.items || []);
 
             if (!rules.length) {
                 wrap.innerHTML = '<div class="empty-state">No rules registered in this library.</div>';
@@ -2094,10 +2131,22 @@
 
         const qInput = document.getElementById('history-search-input');
         const domFilter = document.getElementById('history-domain-filter');
-        const outFilter = document.getElementById('history-outcome-filter');
+        const outFilter = document.getElementById('history-decision-filter') || document.getElementById('history-outcome-filter');
         const refreshBtn = document.getElementById('refresh-history-btn');
 
         if (refreshBtn) refreshBtn.onclick = loadHistoryView;
+
+        if (domFilter && domFilter.options.length <= 1) {
+            apiRequest('/api/v1/domains').then(data => {
+                const doms = Array.isArray(data) ? data : (data.items || []);
+                doms.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = d.name;
+                    domFilter.appendChild(opt);
+                });
+            }).catch(() => {});
+        }
 
         const q = qInput ? qInput.value.trim() : '';
         const domain = domFilter ? domFilter.value : '';
@@ -2203,76 +2252,106 @@
     // -------------------------------------------------------------------------
     // 17. VISUAL RULE STUDIO & WHAT-IF SIMULATOR
     // -------------------------------------------------------------------------
-    function initRuleStudio() {
-        const addCondBtn = document.getElementById('add-condition-btn');
-        const condsList = document.getElementById('conditions-list');
-        const saveBtn = document.getElementById('save-custom-rule-btn');
+    function loadStudioView() {
+        apiRequest('/api/v1/domains').then(data => {
+            const select = document.getElementById('rule-domain-select');
+            const items = Array.isArray(data) ? data : (data.items || []);
+            if (select && items.length) {
+                select.innerHTML = items.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('');
+            }
+        }).catch(() => {});
+    }
 
-        if (addCondBtn && condsList) {
-            addCondBtn.onclick = () => {
-                const item = document.createElement('div');
-                item.className = 'condition-row';
-                item.style.display = 'flex';
-                item.style.gap = '8px';
-                item.style.marginBottom = '8px';
-                item.innerHTML = `
-                    <input type="text" class="form-control cond-field" placeholder="Field (e.g. gpa)" style="flex:2;">
-                    <select class="form-control cond-op" style="flex:1;">
-                        <option value=">=">&gt;=</option>
-                        <option value="<=">&lt;=</option>
-                        <option value="==">==</option>
-                        <option value="!=">!=</option>
-                        <option value=">">&gt;</option>
-                        <option value="<">&lt;</option>
-                    </select>
-                    <input type="text" class="form-control cond-val" placeholder="Value (e.g. 7.0)" style="flex:2;">
-                    <button type="button" class="icon-btn remove-cond-btn" style="color:#ef4444;">&times;</button>
-                `;
-                condsList.appendChild(item);
-                item.querySelector('.remove-cond-btn').onclick = () => item.remove();
+    function initRuleStudio() {
+        loadStudioView();
+
+        const validateBtn = document.getElementById('validate-rule-btn');
+        const feedback = document.getElementById('rule-validation-feedback');
+        const condInput = document.getElementById('rule-condition-json');
+        const actInput = document.getElementById('rule-action-json');
+
+        if (validateBtn && feedback) {
+            validateBtn.onclick = () => {
+                feedback.classList.remove('hidden');
+                try {
+                    if (condInput && condInput.value) JSON.parse(condInput.value);
+                    if (actInput && actInput.value) JSON.parse(actInput.value);
+                    feedback.style.color = '#86efac';
+                    feedback.textContent = '✓ Condition and Action JSON schemas are syntactically valid.';
+                } catch (e) {
+                    feedback.style.color = '#fca5a5';
+                    feedback.textContent = '✗ JSON Syntax Error: ' + e.message;
+                }
             };
         }
 
-        if (saveBtn) {
-            saveBtn.onclick = async () => {
-                const name = document.getElementById('rule-name').value.trim();
-                const desc = document.getElementById('rule-description').value.trim();
-                const prio = parseInt(document.getElementById('rule-priority').value || '50', 10);
+        const form = document.getElementById('create-rule-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
                 const domainId = document.getElementById('rule-domain-select')?.value || 'dom_academic';
-
-                if (!name) {
-                    alert('Please provide a rule name.');
-                    return;
-                }
-
-                const conditions = [];
-                document.querySelectorAll('#conditions-list .condition-row').forEach(row => {
-                    const field = row.querySelector('.cond-field').value.trim();
-                    const op = row.querySelector('.cond-op').value;
-                    const valStr = row.querySelector('.cond-val').value.trim();
-                    let val = valStr;
-                    if (!isNaN(Number(valStr)) && valStr !== '') val = Number(valStr);
-                    if (field) conditions.push({ field, operator: op, value: val });
-                });
-
-                const payload = {
-                    name,
-                    domain_id: domainId,
-                    description: desc,
-                    priority: prio,
-                    condition_schema: { all: conditions },
-                    consequence_schema: { action: 'ALLOW', message: 'Rule verified.' },
-                };
+                const name = document.getElementById('rule-name-input')?.value.trim();
+                const priority = parseInt(document.getElementById('rule-priority-input')?.value || '10', 10);
+                const condText = document.getElementById('rule-condition-json')?.value.trim();
+                const actText = document.getElementById('rule-action-json')?.value.trim();
+                const expl = document.getElementById('rule-explanation-tpl')?.value.trim();
 
                 try {
+                    const condJson = condText ? JSON.parse(condText) : { all: [] };
+                    const actJson = actText ? JSON.parse(actText) : { action: 'ALLOW', message: 'Rule verified' };
+
+                    const payload = {
+                        name,
+                        domain_id: domainId,
+                        description: expl || 'Author-defined rule schema',
+                        priority,
+                        condition_schema: condJson,
+                        consequence_schema: actJson,
+                    };
+
                     await apiRequest('/api/v1/rules', {
                         method: 'POST',
                         body: JSON.stringify(payload),
                     });
-                    alert('Custom Rule successfully saved!');
-                    switchTab('chat-view');
-                } catch (e) {
-                    alert('Save failed: ' + e.message);
+                    alert('Rule successfully created and registered in domain!');
+                    form.reset();
+                    if (feedback) feedback.classList.add('hidden');
+                } catch (err) {
+                    alert('Failed to save rule: ' + err.message);
+                }
+            };
+        }
+
+        const runTestBtn = document.getElementById('run-rule-test-btn');
+        if (runTestBtn) {
+            runTestBtn.onclick = async () => {
+                const resultsBox = document.getElementById('rule-test-results');
+                const outputEl = document.getElementById('rule-test-output');
+                const factsText = document.getElementById('test-facts-json')?.value;
+                const domainId = document.getElementById('rule-domain-select')?.value || 'dom_academic';
+
+                if (resultsBox) resultsBox.classList.remove('hidden');
+                if (outputEl) outputEl.innerHTML = '<div class="loading-placeholder">Testing rule activation against facts...</div>';
+
+                try {
+                    const facts = JSON.parse(factsText || '{}');
+                    const res = await apiRequest('/api/v1/evaluations/evaluate', {
+                        method: 'POST',
+                        body: JSON.stringify({ domain_id: domainId, context_data: facts }),
+                    });
+                    if (outputEl) {
+                        outputEl.innerHTML = `
+                            <div style="margin-top:8px;">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                                    <strong>Status:</strong>
+                                    <span class="badge ${res.is_eligible ? 'success' : 'error'}">${res.is_eligible ? 'ACTIVATED / ELIGIBLE' : 'NOT ACTIVATED'}</span>
+                                </div>
+                                <pre style="font-size:11px;max-height:160px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:8px;border-radius:4px;">${escapeHtml(JSON.stringify(res, null, 2))}</pre>
+                            </div>
+                        `;
+                    }
+                } catch (err) {
+                    if (outputEl) outputEl.innerHTML = `<div class="empty-state text-danger">Test failed: ${escapeHtml(err.message)}</div>`;
                 }
             };
         }
@@ -2281,8 +2360,9 @@
     function loadSimulatorView() {
         apiRequest('/api/v1/domains').then(data => {
             const select = document.getElementById('sim-domain');
-            if (select && data.items) {
-                select.innerHTML = data.items.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('');
+            const items = Array.isArray(data) ? data : (data.items || []);
+            if (select && items.length) {
+                select.innerHTML = items.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('');
             }
         }).catch(() => {});
 
@@ -2290,30 +2370,43 @@
         if (btn) {
             btn.onclick = async () => {
                 const out = document.getElementById('sim-results-output');
-                if (out) out.innerHTML = 'Simulating counterfactual execution...';
+                if (out) out.innerHTML = '<div class="loading-placeholder">Evaluating baseline vs counterfactual scenarios...</div>';
 
                 try {
-                    const domId = document.getElementById('sim-domain').value;
-                    const inputJson = JSON.parse(document.getElementById('sim-student-input').value || '{}');
+                    const domId = document.getElementById('sim-domain')?.value || 'dom_academic';
+                    const baseInput = document.getElementById('sim-baseline-facts')?.value || '{}';
+                    const candInput = document.getElementById('sim-candidate-facts')?.value || '{}';
+                    const baseJson = JSON.parse(baseInput);
+                    const candJson = JSON.parse(candInput);
 
-                    const res = await apiRequest('/api/v1/evaluations/evaluate', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            domain_id: domId,
-                            context_data: inputJson,
+                    const [resBase, resCand] = await Promise.all([
+                        apiRequest('/api/v1/evaluations/evaluate', {
+                            method: 'POST',
+                            body: JSON.stringify({ domain_id: domId, context_data: baseJson }),
                         }),
-                    });
+                        apiRequest('/api/v1/evaluations/evaluate', {
+                            method: 'POST',
+                            body: JSON.stringify({ domain_id: domId, context_data: candJson }),
+                        })
+                    ]);
 
                     if (out) {
                         out.innerHTML = `
-                            <div style="background:rgba(255,255,255,0.03);padding:14px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);">
-                                <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-                                    <strong>Simulation Result</strong>
-                                    <span class="badge ${res.is_eligible ? 'success' : 'error'}">
-                                        ${res.is_eligible ? 'ELIGIBLE' : 'INELIGIBLE'}
-                                    </span>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+                                <div style="background:rgba(255,255,255,0.03);padding:14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                        <strong style="font-size:13px;">Baseline Scenario</strong>
+                                        <span class="badge ${resBase.is_eligible ? 'success' : 'error'}">${resBase.is_eligible ? 'ELIGIBLE' : 'INELIGIBLE'}</span>
+                                    </div>
+                                    <pre style="font-size:11px;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.2);padding:8px;border-radius:4px;">${escapeHtml(JSON.stringify(resBase, null, 2))}</pre>
                                 </div>
-                                <pre style="font-size:12px;max-height:260px;overflow-y:auto;">${escapeHtml(JSON.stringify(res, null, 2))}</pre>
+                                <div style="background:rgba(255,255,255,0.03);padding:14px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                        <strong style="font-size:13px;">Counterfactual Scenario</strong>
+                                        <span class="badge ${resCand.is_eligible ? 'success' : 'error'}">${resCand.is_eligible ? 'ELIGIBLE' : 'INELIGIBLE'}</span>
+                                    </div>
+                                    <pre style="font-size:11px;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.2);padding:8px;border-radius:4px;">${escapeHtml(JSON.stringify(resCand, null, 2))}</pre>
+                                </div>
                             </div>
                         `;
                     }
@@ -2749,6 +2842,7 @@
         });
 
         initChat();
+        initChatSearch();
         initRuleStudio();
         initModals();
         initAuth();

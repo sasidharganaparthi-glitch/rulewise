@@ -499,7 +499,8 @@ html, body {
     padding: 24px 32px;
 }
 
-.view-panel.active {
+.view-panel.active,
+.view-panel:not(.hidden) {
     display: flex;
     flex-direction: column;
 }
@@ -512,7 +513,8 @@ html, body {
     height: 100%;
 }
 
-#chat-view.active {
+#chat-view.active,
+#chat-view:not(.hidden) {
     display: flex;
 }
 
