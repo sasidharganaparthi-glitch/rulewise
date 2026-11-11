@@ -117,15 +117,127 @@ class UserRepository:
             user = self.get_by_email(username)
         if not user or not user.get("password_hash"):
             return None
+        # Disallow disabled accounts
+        if user.get("is_active") == 0:
+            return None
         if verify_password(password, user["password_hash"]):
             return {
                 "id": user["id"],
                 "username": user["username"],
                 "email": user["email"],
                 "role": user["role"],
+                "is_active": user.get("is_active", 1),
                 "created_at": user["created_at"],
             }
         return None
+
+    def get_or_create_google_user(
+        self,
+        google_id: str,
+        email: str,
+        name: Optional[str] = None,
+        picture: Optional[str] = None,
+        is_admin: bool = False,
+    ) -> Dict[str, Any]:
+        """Authenticate or register a verified Google OAuth user."""
+        email_clean = email.strip().lower()
+        now = _utc_now_iso()
+        user = self.get_by_email(email_clean)
+        role = "admin" if is_admin else ("admin" if email_clean == "sasiganaparthi@gmail.com" else "user")
+
+        with self.db.transaction() as conn:
+            if user:
+                # Update Google metadata
+                target_role = "admin" if (is_admin or user.get("role") == "admin" or email_clean == "sasiganaparthi@gmail.com") else user.get("role", "user")
+                conn.execute(
+                    "UPDATE users SET google_id = ?, picture = COALESCE(?, picture), role = ? WHERE id = ?;",
+                    (google_id, picture, target_role, user["id"]),
+                )
+                user["role"] = target_role
+                user["picture"] = picture or user.get("picture")
+                return user
+            else:
+                user_id = f"user_{uuid.uuid4().hex[:12]}"
+                username_base = (name or email_clean.split("@")[0]).strip().replace(" ", "_")
+                # Ensure unique username
+                existing_u = self.get_by_username(username_base)
+                username = username_base if not existing_u else f"{username_base}_{uuid.uuid4().hex[:4]}"
+                conn.execute(
+                    """
+                    INSERT INTO users (id, username, email, password_hash, role, is_active, google_id, picture, created_at)
+                    VALUES (?, ?, ?, NULL, ?, 1, ?, ?, ?);
+                    """,
+                    (user_id, username, email_clean, role, google_id, picture, now),
+                )
+                return {
+                    "id": user_id,
+                    "username": username,
+                    "email": email_clean,
+                    "role": role,
+                    "is_active": 1,
+                    "google_id": google_id,
+                    "picture": picture,
+                    "created_at": now,
+                }
+
+    def update_user_status(self, user_id: str, is_active: bool) -> bool:
+        """Enable or disable user access."""
+        with self.db.transaction() as conn:
+            cur = conn.execute("UPDATE users SET is_active = ? WHERE id = ?;", (1 if is_active else 0, user_id))
+            return cur.rowcount > 0
+
+    def update_user_role(self, user_id: str, role: str) -> bool:
+        """Change user role (e.g. user -> admin)."""
+        with self.db.transaction() as conn:
+            cur = conn.execute("UPDATE users SET role = ? WHERE id = ?;", (role, user_id))
+            return cur.rowcount > 0
+
+    def update_password(self, user_id: str, new_password: str) -> bool:
+        """Update password hash for a user."""
+        new_hash = hash_password(new_password)
+        with self.db.transaction() as conn:
+            cur = conn.execute("UPDATE users SET password_hash = ? WHERE id = ?;", (new_hash, user_id))
+            return cur.rowcount > 0
+
+    def delete_user(self, user_id: str) -> bool:
+        """Delete user account."""
+        with self.db.transaction() as conn:
+            cur = conn.execute("DELETE FROM users WHERE id = ?;", (user_id,))
+            return cur.rowcount > 0
+
+    def count_admins(self) -> int:
+        """Count active administrators in the system to prevent deleting the last admin."""
+        with self.db.get_connection() as conn:
+            res = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = 1;").fetchone()
+            return res[0] if res else 0
+
+    def list_users(
+        self,
+        search: Optional[str] = None,
+        role: Optional[str] = None,
+        is_active: Optional[bool] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """List registered users with optional search and role filters."""
+        query = "SELECT id, username, email, role, is_active, google_id, picture, created_at FROM users WHERE 1=1"
+        params: List[Any] = []
+        if search:
+            query += " AND (LOWER(username) LIKE ? OR LOWER(email) LIKE ?)"
+            term = f"%{search.strip().lower()}%"
+            params.extend([term, term])
+        if role:
+            query += " AND role = ?"
+            params.append(role)
+        if is_active is not None:
+            query += " AND is_active = ?"
+            params.append(1 if is_active else 0)
+        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?;"
+        params.extend([limit, offset])
+
+        with self.db.get_connection() as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [dict(r) for r in rows]
 
 
 class DomainRepository:
@@ -413,6 +525,8 @@ class EvaluationRepository:
         derived_facts: Optional[Dict[str, Any]] = None,
         explanation: Optional[Dict[str, Any]] = None,
         user_id: Optional[str] = None,
+        question: Optional[str] = None,
+        confidence: float = 1.0,
     ) -> Dict[str, Any]:
         """Persist a completed rule engine evaluation trace."""
         eval_id = f"eval_{uuid.uuid4().hex[:12]}"
@@ -421,13 +535,13 @@ class EvaluationRepository:
             conn.execute(
                 """
                 INSERT INTO evaluations (
-                    id, domain_id, user_id, input_facts_json, conclusion_reached,
+                    id, domain_id, user_id, question, confidence, input_facts_json, conclusion_reached,
                     final_decision, decision_status, fired_rules_json, derived_facts_json,
                     explanation_json, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 (
-                    eval_id, domain_id, user_id, json.dumps(input_facts),
+                    eval_id, domain_id, user_id, question, float(confidence), json.dumps(input_facts),
                     1 if conclusion_reached else 0, final_decision, decision_status,
                     json.dumps(fired_rules or []), json.dumps(derived_facts or {}),
                     json.dumps(explanation or {}), now
@@ -447,15 +561,28 @@ class EvaluationRepository:
             d["derived_facts"] = json.loads(d["derived_facts_json"])
             d["explanation"] = json.loads(d["explanation_json"])
             d["conclusion_reached"] = bool(d["conclusion_reached"])
+            d["confidence"] = float(d.get("confidence") or 1.0)
             return d
+
+    def delete_evaluation(self, eval_id: str, user_id: Optional[str] = None) -> bool:
+        """Delete an evaluation record (isolated to owner or admin)."""
+        with self.db.transaction() as conn:
+            if user_id:
+                cur = conn.execute("DELETE FROM evaluations WHERE id = ? AND user_id = ?;", (eval_id, user_id))
+            else:
+                cur = conn.execute("DELETE FROM evaluations WHERE id = ?;", (eval_id,))
+            return cur.rowcount > 0
 
     def list_evaluations(
         self,
         domain_id: Optional[str] = None,
         user_id: Optional[str] = None,
+        search: Optional[str] = None,
+        decision: Optional[str] = None,
         limit: int = 50,
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
-        """List past evaluations with filtering."""
+        """List past evaluations with filtering, searching, and pagination."""
         query = "SELECT * FROM evaluations WHERE 1=1"
         params: List[Any] = []
         if domain_id:
@@ -464,8 +591,15 @@ class EvaluationRepository:
         if user_id:
             query += " AND user_id = ?"
             params.append(user_id)
-        query += " ORDER BY created_at DESC LIMIT ?;"
-        params.append(limit)
+        if decision:
+            query += " AND LOWER(final_decision) = LOWER(?)"
+            params.append(decision.strip())
+        if search:
+            query += " AND (LOWER(final_decision) LIKE ? OR LOWER(COALESCE(question, '')) LIKE ? OR input_facts_json LIKE ?)"
+            term = f"%{search.strip().lower()}%"
+            params.extend([term, term, term])
+        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?;"
+        params.extend([limit, offset])
 
         with self.db.get_connection() as conn:
             rows = conn.execute(query, tuple(params)).fetchall()
@@ -477,8 +611,28 @@ class EvaluationRepository:
                 d["derived_facts"] = json.loads(d["derived_facts_json"])
                 d["explanation"] = json.loads(d["explanation_json"])
                 d["conclusion_reached"] = bool(d["conclusion_reached"])
+                d["confidence"] = float(d.get("confidence") or 1.0)
                 results.append(d)
             return results
+
+    def get_decision_stats(self) -> Dict[str, Any]:
+        """Aggregate platform decision statistics for the admin dashboard."""
+        with self.db.get_connection() as conn:
+            total = conn.execute("SELECT COUNT(*) FROM evaluations;").fetchone()[0]
+            concluded = conn.execute("SELECT COUNT(*) FROM evaluations WHERE conclusion_reached = 1;").fetchone()[0]
+            per_domain = conn.execute(
+                "SELECT domain_id, COUNT(*) as count FROM evaluations GROUP BY domain_id;"
+            ).fetchall()
+            decisions = conn.execute(
+                "SELECT final_decision, COUNT(*) as count FROM evaluations GROUP BY final_decision ORDER BY count DESC LIMIT 10;"
+            ).fetchall()
+            return {
+                "total_decisions": total,
+                "concluded_decisions": concluded,
+                "concluded_rate_pct": round((concluded / total * 100) if total else 0, 1),
+                "by_domain": {row["domain_id"]: row["count"] for row in per_domain},
+                "by_decision": {row["final_decision"]: row["count"] for row in decisions},
+            }
 
 
 class ConversationRepository:
@@ -519,7 +673,7 @@ class ConversationRepository:
         return {"id": conversation_id, "user_id": user_id, "title": title, "created_at": now, "updated_at": now}
 
     def list_conversations(self, user_id: Optional[str] = None, limit: int = 20) -> List[Dict[str, Any]]:
-        """List active conversations for a user or guest, excluding test runs and conversations older than 30 days."""
+        """List active conversations for a user, isolated to that user and within the 30-day retention window."""
         query = (
             "SELECT * FROM conversations "
             "WHERE TRIM(title) != '' "
@@ -535,6 +689,9 @@ class ConversationRepository:
         if user_id:
             query += " AND user_id = ?"
             params.append(user_id)
+        else:
+            # If guest/unauthenticated, do not expose any registered user conversations
+            query += " AND (user_id IS NULL OR user_id LIKE 'guest_%')"
         query += " ORDER BY updated_at DESC LIMIT ?;"
         params.append(limit)
 

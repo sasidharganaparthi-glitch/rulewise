@@ -1,10 +1,10 @@
-"""API endpoints for natural language queries and interactive advisory sessions (Phase 6, 7 & 8)."""
+"""API endpoints for natural language queries and personalized advisory sessions."""
 
 import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from backend.core.security import get_current_user_optional
+from backend.core.security import get_current_user_optional, get_current_user_required
 from backend.db.database import get_db_manager
 from backend.db.repositories import ConversationRepository, DomainRepository, EvaluationRepository
 from backend.nlp.orchestrator import RuleWiseOrchestrator
@@ -45,7 +45,7 @@ def chat_endpoint(
     orchestrator: RuleWiseOrchestrator = Depends(get_orchestrator),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
 ) -> ChatResponse:
-    """Evaluate natural language user inquiry.
+    """Evaluate natural language user inquiry with multi-turn memory and live updates.
 
     Dispatches GENERAL_CHAT inquiries through conversational guidance and
     RULE_QUERY inquiries strictly through the deterministic symbolic reasoning engine.
@@ -88,9 +88,9 @@ def chat_endpoint(
             else:
                 raise
 
-        # Persist conversation & messages if requested or user active
+        # Persist conversation & messages for user
         try:
-            title = request.message[:40] + ("..." if len(request.message) > 40 else "")
+            title = request.message[:45].strip() + ("..." if len(request.message) > 45 else "")
             if not conv_id:
                 new_conv = conv_repo.create_conversation(title=title, user_id=user_id)
                 conv_id = new_conv["id"]
@@ -125,6 +125,8 @@ def chat_endpoint(
                     derived_facts=response.symbolic_result.get("derived_facts", {}),
                     explanation=response.explanation or {},
                     user_id=user_id,
+                    question=request.message,
+                    confidence=1.0,
                 )
         except Exception as persist_err:
             logger.warning("Failed to persist conversation trace (non-fatal): %s", persist_err)
@@ -164,12 +166,12 @@ def chat_status_endpoint() -> ProviderStatusResponse:
     )
 
 
-@router.get("/conversations", summary="List chat conversation sessions")
+@router.get("/conversations", summary="List chat conversation sessions for user")
 def list_conversations(
     limit: int = Query(20, ge=1, le=100),
     current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
 ) -> List[Dict[str, Any]]:
-    """List recent conversation threads."""
+    """List recent conversation threads isolated to authenticated user."""
     db = get_db_manager()
     conv_repo = ConversationRepository(db)
     user_id = current_user.get("sub") if current_user else None
@@ -177,8 +179,37 @@ def list_conversations(
 
 
 @router.get("/conversations/{conv_id}/messages", summary="Get messages in conversation thread")
-def get_conversation_messages(conv_id: str) -> List[Dict[str, Any]]:
-    """Retrieve message transcript for a specific conversation."""
+def get_conversation_messages(
+    conv_id: str,
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
+) -> List[Dict[str, Any]]:
+    """Retrieve message transcript for a specific conversation with access check."""
     db = get_db_manager()
     conv_repo = ConversationRepository(db)
+    conv = conv_repo.get_conversation(conv_id)
+    if not conv:
+        return []
+    if conv.get("user_id") and current_user:
+        is_admin = (current_user.get("role") == "admin")
+        if not is_admin and conv["user_id"] != current_user.get("sub"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this conversation.")
     return conv_repo.get_messages(conv_id)
+
+
+@router.delete("/conversations/{conv_id}", summary="Delete conversation thread")
+def delete_conversation(
+    conv_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user_required),
+) -> Dict[str, Any]:
+    """Delete a conversation thread."""
+    db = get_db_manager()
+    conv_repo = ConversationRepository(db)
+    conv = conv_repo.get_conversation(conv_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    is_admin = (current_user.get("role") == "admin")
+    if not is_admin and conv.get("user_id") != current_user.get("sub"):
+        raise HTTPException(status_code=403, detail="Cannot delete another user's conversation.")
+    with db.transaction() as conn:
+        conn.execute("DELETE FROM conversations WHERE id = ?;", (conv_id,))
+    return {"status": "deleted", "conversation_id": conv_id}

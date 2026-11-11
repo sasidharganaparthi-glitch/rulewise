@@ -48,6 +48,28 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    is_admin_login: bool = False
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str = Field(..., description="Google ID Token issued by Google Identity Services")
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+
+class AdminUserCreateRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(...)
+    password: str = Field(..., min_length=6, max_length=100)
+    role: str = Field("user", pattern="^(admin|user)$")
+
+
+class AdminUserStatusUpdateRequest(BaseModel):
+    is_active: Optional[bool] = None
+    role: Optional[str] = Field(None, pattern="^(admin|user)$")
 
 
 class UserResponse(BaseModel):
@@ -55,6 +77,9 @@ class UserResponse(BaseModel):
     username: str
     email: Optional[str] = None
     role: str
+    is_active: bool = True
+    picture: Optional[str] = None
+    google_id: Optional[str] = None
     created_at: str
 
 
@@ -172,6 +197,8 @@ class EvaluationHistoryResponse(BaseModel):
     id: str
     domain_id: str
     user_id: Optional[str] = None
+    question: Optional[str] = None
+    confidence: Optional[float] = 1.0
     input_facts: Dict[str, Any]
     conclusion_reached: bool
     final_decision: str

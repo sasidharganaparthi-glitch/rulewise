@@ -226,8 +226,8 @@ class ResponseGenerator:
         """
         lowered = user_message.lower().strip()
 
-        # Fast path for instantaneous greetings (<0.1ms latency)
-        if re.match(r"^(hi+|hello+|hey+|howdy|greetings|hola|good\s+(morning|afternoon|evening))\b", lowered):
+        # Fast path for instantaneous greetings if provider is available (<0.1ms latency)
+        if self.provider.is_available() and re.match(r"^(hi+|hello+|hey+|howdy|greetings|hola|good\s+(morning|afternoon|evening))\b", lowered):
             return (
                 "Hello! I am RuleWise AI, powered by Gemini and equipped with neuro-symbolic reasoning capabilities. "
                 "How can I help you today? You can ask me any question, brainstorm ideas, write or debug code, "

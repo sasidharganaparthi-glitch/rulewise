@@ -23,6 +23,7 @@ from backend.engine.working_memory import WorkingMemory
 from backend.explainability.contrastive import build_why_not
 from backend.explainability.trace_builder import build_trace, build_why
 from backend.knowledge.loader import KnowledgeBase
+from backend.nlp.live_search import LiveInformationService, is_live_information_query
 from backend.nlp.provider import LanguageModelProvider, get_language_model_provider
 from backend.nlp.query_parser import QueryParser
 from backend.nlp.response_generator import ResponseGenerator
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class RuleWiseOrchestrator:
-    """Orchestrates natural language interpretation and deterministic symbolic reasoning."""
+    """Orchestrates natural language interpretation, live web grounding, and deterministic symbolic reasoning."""
 
     def __init__(
         self,
@@ -47,15 +48,9 @@ class RuleWiseOrchestrator:
         provider: Optional[LanguageModelProvider] = None,
         query_parser: Optional[QueryParser] = None,
         response_generator: Optional[ResponseGenerator] = None,
+        live_service: Optional[LiveInformationService] = None,
     ) -> None:
-        """Initialize RuleWiseOrchestrator with dependencies.
-
-        Args:
-            knowledge_base: KnowledgeBase instance.
-            provider: LanguageModelProvider instance.
-            query_parser: QueryParser instance.
-            response_generator: ResponseGenerator instance.
-        """
+        """Initialize RuleWiseOrchestrator with dependencies."""
         self.kb = knowledge_base or KnowledgeBase()
         self.provider = provider or get_language_model_provider()
         self.query_parser = query_parser or QueryParser(
@@ -64,6 +59,7 @@ class RuleWiseOrchestrator:
         self.response_generator = response_generator or ResponseGenerator(
             provider=self.provider
         )
+        self.live_service = live_service or LiveInformationService()
 
     def process_message(
         self,
@@ -111,6 +107,20 @@ class RuleWiseOrchestrator:
 
         # 3. Handle GENERAL_CHAT path
         if intent_res.intent == UserIntent.GENERAL_CHAT:
+            # Check if query requests live/current updates (Requirement 7)
+            if is_live_information_query(cleaned_message) and self.provider.is_available():
+                try:
+                    live_res = self.live_service.answer_with_live_grounding(
+                        cleaned_message, self.provider, conversation_context=context_prompt
+                    )
+                    return ChatResponse(
+                        message=live_res["text"],
+                        intent=UserIntent.GENERAL_CHAT,
+                        used_fallback=not live_res.get("is_live_verified", False),
+                    )
+                except Exception as live_err:
+                    logger.warning("Live information grounding encountered error: %s", live_err)
+
             response_text, gen_fallback = self.response_generator.generate_general_chat_response(
                 context_prompt
             )

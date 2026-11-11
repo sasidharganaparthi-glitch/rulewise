@@ -86,9 +86,23 @@ class DatabaseManager:
                 email TEXT UNIQUE,
                 password_hash TEXT,
                 role TEXT NOT NULL DEFAULT 'user',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                google_id TEXT,
+                picture TEXT,
                 created_at TEXT NOT NULL
             );
             """)
+
+            # Safe migrations for existing databases
+            for col_sql in (
+                "ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;",
+                "ALTER TABLE users ADD COLUMN google_id TEXT;",
+                "ALTER TABLE users ADD COLUMN picture TEXT;",
+            ):
+                try:
+                    conn.execute(col_sql)
+                except Exception:
+                    pass
 
             # Domains table
             conn.execute("""
@@ -134,6 +148,8 @@ class DatabaseManager:
                 id TEXT PRIMARY KEY,
                 domain_id TEXT NOT NULL,
                 user_id TEXT,
+                question TEXT,
+                confidence REAL DEFAULT 1.0,
                 input_facts_json TEXT NOT NULL,
                 conclusion_reached INTEGER NOT NULL DEFAULT 0,
                 final_decision TEXT NOT NULL,
@@ -145,6 +161,15 @@ class DatabaseManager:
                 FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
             );
             """)
+
+            for col_sql in (
+                "ALTER TABLE evaluations ADD COLUMN question TEXT;",
+                "ALTER TABLE evaluations ADD COLUMN confidence REAL DEFAULT 1.0;",
+            ):
+                try:
+                    conn.execute(col_sql)
+                except Exception:
+                    pass
 
             # Conversations table
             conn.execute("""

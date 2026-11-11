@@ -26,16 +26,25 @@ def seed_database(db: DatabaseManager) -> None:
     domain_repo = DomainRepository(db)
     rule_repo = RuleRepository(db)
 
-    # 1. Seed Default Accounts
-    admin = user_repo.get_by_username("admin")
+    # 1. Seed Administrator Account (Secure Provisioning)
+    from backend.core.config import get_settings
+    settings = get_settings()
+
+    admin_email = getattr(settings, "ADMIN_EMAIL", "sasiganaparthi@gmail.com")
+    admin_pwd = getattr(settings, "ADMIN_INITIAL_PASSWORD", None) or "Admin#RuleWise2026"
+
+    admin = user_repo.get_by_email(admin_email) or user_repo.get_by_username("sasiganaparthi")
     if not admin:
         admin = user_repo.create_user(
-            username="admin",
-            password="admin123",
-            email="admin@rulewise.ai",
+            username="sasiganaparthi",
+            password=admin_pwd,
+            email=admin_email,
             role="admin",
         )
-        logger.info("Created default administrator account: admin")
+        logger.info("Provisioned initial authorized administrator account: %s", admin_email)
+    elif admin.get("role") != "admin":
+        user_repo.update_user_role(admin["id"], "admin")
+        logger.info("Elevated account %s to admin role.", admin_email)
 
     demo_user = user_repo.get_by_username("demo_user")
     if not demo_user:

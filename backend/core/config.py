@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-3.5-flash-lite"
 
+    # Google OAuth 2.0 configuration
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+
+    # Administrator initial configuration
+    ADMIN_EMAIL: str = "sasiganaparthi@gmail.com"
+    ADMIN_INITIAL_PASSWORD: Optional[str] = None
+
     # Application server configuration
     APP_ENV: str = "development"
     APP_HOST: str = "0.0.0.0"

@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Google Identity Services SDK for Official Google OAuth 2.0 -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="rulewise-theme">
     <div id="app" class="app-layout">
@@ -115,12 +117,6 @@
                         </svg>
                         <span>Official Rule Library</span>
                     </button>
-                    <button class="nav-item" data-tab="workspace-view" title="Personal Workspace">
-                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        <span>My Workspace</span>
-                    </button>
                     <button class="nav-item" data-tab="history-view" title="Decision History & Audits">
                         <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -136,14 +132,6 @@
                             <path d="M18 9a9 9 0 0 1-9 9"></path>
                         </svg>
                         <span>What-If Simulator</span>
-                    </button>
-                    <button class="nav-item" data-tab="analytics-view" title="Platform Analytics">
-                        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="20" x2="18" y2="10"></line>
-                            <line x1="12" y1="20" x2="12" y2="4"></line>
-                            <line x1="6" y1="20" x2="6" y2="14"></line>
-                        </svg>
-                        <span>Platform Analytics</span>
                     </button>
 
                     <!-- Dedicated Admin Console Nav Item -->
@@ -517,6 +505,14 @@
                         </button>
                     </div>
 
+                    <div class="admin-subnav-bar" id="domain-category-pills" style="margin-bottom:18px;">
+                        <button class="admin-subnav-btn active" data-category="all">All Domains</button>
+                        <button class="admin-subnav-btn" data-category="education">Education</button>
+                        <button class="admin-subnav-btn" data-category="recruitment">Recruitment & HR</button>
+                        <button class="admin-subnav-btn" data-category="finance">Financial & Loans</button>
+                        <button class="admin-subnav-btn" data-category="compliance">Compliance & Governance</button>
+                    </div>
+
                     <div id="domains-grid" class="rulewise-cards-grid">
                         <div class="loading-placeholder">Loading decision domains...</div>
                     </div>
@@ -609,38 +605,30 @@
                 </section>
 
                 <!-- ========================================================== -->
-                <!-- VIEW 6: PERSONAL WORKSPACE                                 -->
-                <!-- ========================================================== -->
-                <section id="workspace-view" class="view-panel hidden">
-                    <div class="rulewise-panel-header">
-                        <div>
-                            <h2 class="panel-heading">Personal Rule Workspace</h2>
-                            <p class="panel-subtext">Manage your custom rule collections, draft policies, and export bundles.</p>
-                        </div>
-                        <button class="rulewise-btn secondary" id="export-workspace-btn">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            <span>Export JSON</span>
-                        </button>
-                    </div>
-                    <div id="custom-rules-list" class="rules-table-container">
-                        <div class="loading-placeholder">Loading custom rules...</div>
-                    </div>
-                </section>
-
-                <!-- ========================================================== -->
-                <!-- VIEW 7: DECISION HISTORY & AUDITS                          -->
+                <!-- VIEW 6: DECISION HISTORY & AUDITS (User Isolated)          -->
                 <!-- ========================================================== -->
                 <section id="history-view" class="view-panel hidden">
                     <div class="rulewise-panel-header">
                         <div>
                             <h2 class="panel-heading">Decision History & Audit Trail</h2>
-                            <p class="panel-subtext">Complete verifiable audit log of past evaluations and deterministic rule activations.</p>
+                            <p class="panel-subtext">Verified chronological audit trail of your deterministic evaluations and rule firings.</p>
                         </div>
+                        <button class="rulewise-btn secondary btn-sm" id="refresh-history-btn">Refresh History</button>
                     </div>
+
+                    <!-- Search & Filter Controls -->
+                    <div class="history-filter-bar">
+                        <input type="text" id="history-search-input" class="history-search-input" placeholder="Search decisions by question, facts, or outcome...">
+                        <select id="history-domain-filter" class="history-select">
+                            <option value="">All Domains</option>
+                        </select>
+                        <select id="history-decision-filter" class="history-select">
+                            <option value="">All Outcomes</option>
+                            <option value="Approved">Approved / Eligible</option>
+                            <option value="Rejected">Rejected / Ineligible</option>
+                        </select>
+                    </div>
+
                     <div id="evaluations-history-list" class="history-list-container">
                         <div class="loading-placeholder">Loading decision history...</div>
                     </div>
@@ -684,108 +672,117 @@
                 </section>
 
                 <!-- ========================================================== -->
-                <!-- VIEW 9: PLATFORM ANALYTICS                                 -->
                 <!-- ========================================================== -->
-                <section id="analytics-view" class="view-panel hidden">
-                    <div class="rulewise-panel-header">
-                        <div>
-                            <h2 class="panel-heading">Platform Intelligence & Health</h2>
-                            <p class="panel-subtext">Real-time status of the neuro-symbolic engine, rule catalogs, and API endpoints.</p>
-                        </div>
-                    </div>
-                    <div class="analytics-metrics-grid">
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Engine Authority</span>
-                            <span class="metric-value badge success">100% Deterministic</span>
-                        </div>
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Registered Domains</span>
-                            <span class="metric-number" id="stat-domains-count">-</span>
-                        </div>
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Official Rules</span>
-                            <span class="metric-number" id="stat-official-rules-count">-</span>
-                        </div>
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Custom Rules</span>
-                            <span class="metric-number" id="stat-custom-rules-count">-</span>
-                        </div>
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Total Evaluations</span>
-                            <span class="metric-number" id="stat-evaluations-count">-</span>
-                        </div>
-                    </div>
-
-                    <div class="rulewise-card architecture-card">
-                        <h3 class="card-title">Neuro-Symbolic Pipeline Architecture</h3>
-                        <div class="arch-flow">
-                            <div class="arch-node">Natural Language Query</div>
-                            <div class="arch-arrow">→</div>
-                            <div class="arch-node">Gemini Language Layer</div>
-                            <div class="arch-arrow">→</div>
-                            <div class="arch-node active">Deterministic Symbolic Engine (Sole Authority)</div>
-                            <div class="arch-arrow">→</div>
-                            <div class="arch-node">Explainability & Traces</div>
-                            <div class="arch-arrow">→</div>
-                            <div class="arch-node">Auditable Result</div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ========================================================== -->
-                <!-- VIEW 10: ADMIN CONSOLE (Restricted to Administrators)      -->
+                <!-- VIEW 8: ADMIN DASHBOARD (Strictly Restricted to Admins)    -->
                 <!-- ========================================================== -->
                 <section id="admin-view" class="view-panel hidden">
                     <div class="rulewise-panel-header">
                         <div>
-                            <h2 class="panel-heading">Administrator Console</h2>
-                            <p class="panel-subtext">Platform telemetry, official rule libraries, and user logins audit log with password encryption status.</p>
+                            <h2 class="panel-heading">Administrator Dashboard</h2>
+                            <p class="panel-subtext">Platform analytics, user management, official rule libraries, and security audits.</p>
                         </div>
                         <span class="badge success" style="font-size: 13px; padding: 6px 12px;">Admin Mode Active</span>
                     </div>
 
-                    <!-- Admin Telemetry Cards -->
-                    <div class="analytics-metrics-grid" id="admin-telemetry-grid">
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Total Users</span>
-                            <span class="metric-number" id="admin-stat-users">-</span>
-                        </div>
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Login Audit Records</span>
-                            <span class="metric-number" id="admin-stat-logins">-</span>
-                        </div>
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Official Policy Rules</span>
-                            <span class="metric-number" id="admin-stat-rules">-</span>
-                        </div>
-                        <div class="rulewise-card metric-card">
-                            <span class="metric-label">Security Standards</span>
-                            <span class="metric-value badge success">Salted PBKDF2/Argon2</span>
-                        </div>
+                    <!-- Admin Sub-Navigation Tabs -->
+                    <div class="admin-subnav-bar" id="admin-subnav-container">
+                        <button class="admin-subnav-btn active" data-admin-tab="admin-tab-overview">Platform Telemetry</button>
+                        <button class="admin-subnav-btn" data-admin-tab="admin-tab-users">User Management</button>
+                        <button class="admin-subnav-btn" data-admin-tab="admin-tab-rules">Official Rule Libraries</button>
+                        <button class="admin-subnav-btn" data-admin-tab="admin-tab-decisions">Decision Analytics & Audits</button>
                     </div>
 
-                    <!-- Official Rule Libraries (Admin Section 1) -->
-                    <div class="rulewise-card" style="margin-bottom: 24px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                            <h3 class="card-title">Official Regulatory Rule Libraries</h3>
-                            <button class="rulewise-btn secondary btn-sm" id="refresh-admin-rules-btn">Refresh Rules</button>
-                        </div>
-                        <div id="admin-rules-table-wrap" class="rules-table-container">
-                            <div class="loading-placeholder">Loading official rule catalog...</div>
-                        </div>
-                    </div>
-
-                    <!-- User Logins & Access Audit Table (Admin Section 2) -->
-                    <div class="rulewise-card">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                            <div>
-                                <h3 class="card-title">User Logins & Access Audit Log</h3>
-                                <p class="card-subtitle">Complete chronological record of all user login attempts and registrations.</p>
+                    <!-- SUB-VIEW 1: Platform Telemetry & Overview -->
+                    <div id="admin-tab-overview" class="admin-sub-panel">
+                        <div class="analytics-metrics-grid" id="admin-telemetry-grid">
+                            <div class="rulewise-card metric-card">
+                                <span class="metric-label">Total Registered Users</span>
+                                <span class="metric-number" id="admin-stat-users">-</span>
                             </div>
-                            <button class="rulewise-btn secondary btn-sm" id="refresh-admin-logins-btn">Refresh Logins</button>
+                            <div class="rulewise-card metric-card">
+                                <span class="metric-label">Active Users</span>
+                                <span class="metric-number" id="admin-stat-active-users">-</span>
+                            </div>
+                            <div class="rulewise-card metric-card">
+                                <span class="metric-label">Conversations</span>
+                                <span class="metric-number" id="admin-stat-convs">-</span>
+                            </div>
+                            <div class="rulewise-card metric-card">
+                                <span class="metric-label">Total AI Queries</span>
+                                <span class="metric-number" id="admin-stat-queries">-</span>
+                            </div>
+                            <div class="rulewise-card metric-card">
+                                <span class="metric-label">Official Policy Rules</span>
+                                <span class="metric-number" id="admin-stat-rules">-</span>
+                            </div>
+                            <div class="rulewise-card metric-card">
+                                <span class="metric-label">Security Standards</span>
+                                <span class="metric-value badge success">PBKDF2 / Argon2</span>
+                            </div>
                         </div>
-                        <div id="admin-logins-table-wrap" class="rules-table-container">
-                            <div class="loading-placeholder">Loading user access audit log...</div>
+
+                        <div class="rulewise-card" style="margin-top: 20px;">
+                            <h3 class="card-title">System & AI Provider Health</h3>
+                            <div id="admin-ai-health-status" style="margin-top: 10px; font-size: 13.5px; color: #94a3b8;">
+                                Checking provider health...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-VIEW 2: User Management -->
+                    <div id="admin-tab-users" class="admin-sub-panel hidden">
+                        <div class="rulewise-card">
+                            <div class="admin-toolbar">
+                                <div>
+                                    <h3 class="card-title">Registered User Directory</h3>
+                                    <p class="card-subtitle">Search users, toggle active status, and assign administrator roles.</p>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <input type="text" id="admin-user-search" class="admin-search-input" placeholder="Search by email or name...">
+                                    <button class="rulewise-btn primary btn-sm" id="admin-add-user-btn">+ Add User</button>
+                                </div>
+                            </div>
+                            <div id="admin-users-table-wrap" class="rules-table-container">
+                                <div class="loading-placeholder">Loading user directory...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-VIEW 3: Official Rule Libraries -->
+                    <div id="admin-tab-rules" class="admin-sub-panel hidden">
+                        <div class="rulewise-card">
+                            <div class="admin-toolbar">
+                                <div>
+                                    <h3 class="card-title">Official Governance Rules</h3>
+                                    <p class="card-subtitle">Accredited regulatory rules enforced deterministically across all domains.</p>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <select id="admin-rules-domain-filter" class="history-select">
+                                        <option value="">All Domains</option>
+                                    </select>
+                                    <button class="rulewise-btn primary btn-sm" id="admin-add-rule-btn">+ Add Rule</button>
+                                </div>
+                            </div>
+                            <div id="admin-rules-table-wrap" class="rules-table-container">
+                                <div class="loading-placeholder">Loading official rules...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-VIEW 4: Decision Analytics & Audits -->
+                    <div id="admin-tab-decisions" class="admin-sub-panel hidden">
+                        <div class="rulewise-card" style="margin-bottom: 20px;">
+                            <h3 class="card-title">Platform-Wide Decision Analytics</h3>
+                            <div id="admin-decision-analytics-wrap" style="margin-top: 12px;">
+                                <div class="loading-placeholder">Loading decision analytics...</div>
+                            </div>
+                        </div>
+
+                        <div class="rulewise-card">
+                            <h3 class="card-title">Administrative Audit Trail & Access Log</h3>
+                            <div id="admin-audit-logs-wrap" class="rules-table-container" style="margin-top: 12px;">
+                                <div class="loading-placeholder">Loading audit log...</div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -814,10 +811,22 @@
                 <button class="icon-btn modal-close-btn" id="auth-modal-close-btn">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- Official Google Sign-in -->
+                <div class="google-signin-wrapper">
+                    <div id="google-signin-btn"></div>
+                    <button id="google-signin-custom-btn" class="google-btn-custom">
+                        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
+                        <span>Continue with Google</span>
+                    </button>
+                </div>
+
+                <div class="auth-divider"><span>or sign in with email</span></div>
+
                 <div class="auth-tabs" id="auth-tabs-container">
-                    <button class="auth-tab-btn active" id="tab-login-btn">Log In</button>
+                    <button class="auth-tab-btn active" id="tab-login-btn">User Login</button>
                     <button class="auth-tab-btn" id="tab-register-btn">Register</button>
-                    <button class="auth-tab-btn" id="tab-guest-btn">Guest Mode</button>
+                    <button class="auth-tab-btn" id="tab-admin-login-btn" style="color:#f87171;">Admin Login</button>
+                    <button class="auth-tab-btn" id="tab-guest-btn">Guest</button>
                 </div>
 
                 <!-- Form 1: Log In (Gmail / Email mandatory) -->
@@ -831,6 +840,22 @@
                         <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
                     </div>
                     <button type="submit" class="rulewise-btn primary btn-block">Sign In</button>
+                </form>
+
+                <!-- Form 1B: Admin Log In (Strict Role Enforcement) -->
+                <form id="admin-login-form" class="auth-form hidden">
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; padding: 10px; margin-bottom: 14px; font-size: 12px; color: #fca5a5;">
+                        <strong>Administrator Gateway:</strong> Restricted to authorized system administrators. Standard user credentials will be denied.
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-login-username">Admin Email / Username <span class="required-star">*</span></label>
+                        <input type="text" id="admin-login-username" class="form-control" placeholder="sasiganaparthi@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-login-password">Admin Password <span class="required-star">*</span></label>
+                        <input type="password" id="admin-login-password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="rulewise-btn primary btn-block" style="background:#ef4444;">Authenticate as Administrator</button>
                 </form>
 
                 <!-- Form 2: Register (Gmail / Email mandatory) -->
@@ -926,5 +951,89 @@
 
     <!-- Application Controller -->
     <script src="js/app.js"></script>
+
+    <!-- MODAL 4: Admin Add User -->
+    <div id="admin-add-user-modal" class="modal-backdrop hidden">
+        <div class="rulewise-modal-card">
+            <div class="modal-header">
+                <h3>Add User (Admin Provisioning)</h3>
+                <button class="icon-btn modal-close-btn" id="admin-user-modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="admin-create-user-form">
+                    <div class="form-group">
+                        <label for="new-user-username">Username <span class="required-star">*</span></label>
+                        <input type="text" id="new-user-username" class="form-control" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-user-email">Email Address <span class="required-star">*</span></label>
+                        <input type="email" id="new-user-email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-user-password">Password <span class="required-star">*</span></label>
+                        <input type="password" id="new-user-password" class="form-control" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-user-role">Role</label>
+                        <select id="new-user-role" class="form-control">
+                            <option value="user" selected>Normal User</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="rulewise-btn primary btn-block">Provision Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: Admin Add/Edit Rule -->
+    <div id="admin-rule-modal" class="modal-backdrop hidden">
+        <div class="rulewise-modal-card modal-lg">
+            <div class="modal-header">
+                <h3 id="admin-rule-modal-title">Official Rule Definition</h3>
+                <button class="icon-btn modal-close-btn" id="admin-rule-modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="admin-rule-form">
+                    <input type="hidden" id="admin-rule-id">
+                    <div class="form-group">
+                        <label for="admin-rule-domain-select">Domain Scope</label>
+                        <select id="admin-rule-domain-select" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-rule-name">Rule Name</label>
+                        <input type="text" id="admin-rule-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-rule-desc">Description</label>
+                        <input type="text" id="admin-rule-desc" class="form-control">
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <div class="form-group" style="flex:1;">
+                            <label for="admin-rule-priority">Priority (1-100)</label>
+                            <input type="number" id="admin-rule-priority" class="form-control" value="50" min="1" max="100">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label for="admin-rule-status">Status</label>
+                            <select id="admin-rule-status" class="form-control">
+                                <option value="active">Active</option>
+                                <option value="staged">Staged</option>
+                                <option value="retired">Retired</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-rule-condition">Condition Logic (JSON)</label>
+                        <textarea id="admin-rule-condition" class="form-control code-editor" rows="5" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-rule-consequence">Consequence Action (JSON)</label>
+                        <textarea id="admin-rule-consequence" class="form-control code-editor" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="rulewise-btn primary btn-block" id="admin-save-rule-btn">Save Official Rule</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
