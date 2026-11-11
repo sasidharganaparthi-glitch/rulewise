@@ -192,9 +192,9 @@
 
                 <div class="top-bar-right">
                     <!-- Domain Switcher Pill -->
-                    <div class="rulewise-domain-pill-header" id="header-domain-pill">
+                    <div class="rulewise-domain-pill-header" id="header-domain-pill" title="Current Policy Domain">
                         <span class="status-dot green"></span>
-                        <span id="active-domain-indicator">Academic Policy</span>
+                        <span id="active-domain-indicator">RuleWise Policy</span>
                     </div>
 
                     <!-- New Topic / New Chat Pill -->
@@ -280,10 +280,19 @@
                             </div>
                             <div class="composer-toolbar-row">
                                 <div class="toolbar-left">
-                                    <div class="domain-badge-pill" id="composer-domain-tag">
+                                    <div class="domain-badge-pill" id="composer-domain-tag" title="Select RuleWise Policy Scope">
                                         <span class="pill-dot"></span>
-                                        <span id="composer-domain-label">Academic Policy</span>
+                                        <span id="composer-domain-label">RuleWise Policy</span>
                                     </div>
+                                    <!-- Image & Camera Button (Supports camera capture and photo upload) -->
+                                    <button type="button" class="rulewise-tool-btn" id="camera-btn" title="Capture from camera or upload image">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                            <circle cx="12" cy="13" r="4"></circle>
+                                        </svg>
+                                    </button>
+                                    <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;">
+
                                     <!-- Workable File Upload Button -->
                                     <button type="button" class="rulewise-tool-btn" id="file-upload-btn" title="Upload files (PDF, Word, Excel, PPT, TXT, Images)">
                                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -690,6 +699,8 @@
                         <button class="admin-subnav-btn" data-admin-tab="admin-tab-users">User Management</button>
                         <button class="admin-subnav-btn" data-admin-tab="admin-tab-rules">Official Rule Libraries</button>
                         <button class="admin-subnav-btn" data-admin-tab="admin-tab-decisions">Decision Analytics & Audits</button>
+                        <button class="admin-subnav-btn" data-admin-tab="admin-tab-sessions">Session Monitoring</button>
+                        <button class="admin-subnav-btn" data-admin-tab="admin-tab-safety">Safety & Policy Guardrails</button>
                     </div>
 
                     <!-- SUB-VIEW 1: Platform Telemetry & Overview -->
@@ -716,8 +727,8 @@
                                 <span class="metric-number" id="admin-stat-rules">-</span>
                             </div>
                             <div class="rulewise-card metric-card">
-                                <span class="metric-label">Security Standards</span>
-                                <span class="metric-value badge success">PBKDF2 / Argon2</span>
+                                <span class="metric-label">Access Control</span>
+                                <span class="metric-value badge success">RBAC Active</span>
                             </div>
                         </div>
 
@@ -785,6 +796,52 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- SUB-VIEW 5: Session Management -->
+                    <div id="admin-tab-sessions" class="admin-sub-panel hidden">
+                        <div class="rulewise-card">
+                            <div class="admin-toolbar">
+                                <div>
+                                    <h3 class="card-title">Active Platform Sessions</h3>
+                                    <p class="card-subtitle">Real-time inspection of conversation sessions and thread lifecycle controls.</p>
+                                </div>
+                                <button class="rulewise-btn secondary btn-sm" id="refresh-admin-sessions-btn">Refresh Sessions</button>
+                            </div>
+                            <div id="admin-sessions-table-wrap" class="rules-table-container" style="margin-top: 12px;">
+                                <div class="loading-placeholder">Loading sessions...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-VIEW 6: Safety Policies & Guardrails -->
+                    <div id="admin-tab-safety" class="admin-sub-panel hidden">
+                        <div class="rulewise-card">
+                            <div class="admin-toolbar">
+                                <div>
+                                    <h3 class="card-title">Configurable Safety & Harm Classification</h3>
+                                    <p class="card-subtitle">Manage multi-tier risk boundaries, allow defensive dual-use analysis, and add custom blocked topics.</p>
+                                </div>
+                                <button class="rulewise-btn primary btn-sm" id="save-safety-policies-btn">Save Safety Policies</button>
+                            </div>
+                            <div style="margin-top: 14px;">
+                                <div style="display:flex;gap:20px;margin-bottom:14px;">
+                                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                        <input type="checkbox" id="safety-enabled-toggle" checked>
+                                        <span>Enable Safety Classification Engine</span>
+                                    </label>
+                                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                        <input type="checkbox" id="safety-dual-use-toggle" checked>
+                                        <span>Allow Educational & Defensive Security Discussions</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="safety-custom-keywords">Custom Blocked Keywords / Phrases (Comma-separated)</label>
+                                    <input type="text" id="safety-custom-keywords" class="form-control" placeholder="e.g. unauthorized_phrase, restricted_topic">
+                                </div>
+                                <div id="safety-policy-status-msg" style="font-size:12px;margin-top:6px;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
             </main>
@@ -839,7 +896,29 @@
                         <label for="login-password">Password <span class="required-star">*</span></label>
                         <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
                     </div>
+                    <div style="text-align:right;margin-bottom:12px;">
+                        <button type="button" id="forgot-password-link" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;padding:0;">Forgot password?</button>
+                    </div>
                     <button type="submit" class="rulewise-btn primary btn-block">Sign In</button>
+                </form>
+
+                <!-- Form 1C: Password Reset -->
+                <form id="reset-password-form" class="auth-form hidden">
+                    <div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">
+                        Enter your registered email address and choose a new password.
+                    </div>
+                    <div class="form-group">
+                        <label for="reset-email">Registered Email / Username <span class="required-star">*</span></label>
+                        <input type="text" id="reset-email" class="form-control" placeholder="name@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reset-new-password">New Password <span class="required-star">*</span></label>
+                        <input type="password" id="reset-new-password" class="form-control" placeholder="Min 6 characters" required minlength="6">
+                    </div>
+                    <button type="submit" class="rulewise-btn primary btn-block">Update Password</button>
+                    <div style="text-align:center;margin-top:12px;">
+                        <button type="button" id="back-to-login-btn" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;">Back to Sign In</button>
+                    </div>
                 </form>
 
                 <!-- Form 1B: Admin Log In (Strict Role Enforcement) -->

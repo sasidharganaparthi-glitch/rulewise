@@ -24,6 +24,7 @@ from backend.explainability.contrastive import build_why_not
 from backend.explainability.trace_builder import build_trace, build_why
 from backend.knowledge.loader import KnowledgeBase
 from backend.nlp.live_search import LiveInformationService, is_live_information_query
+from backend.nlp.safety import SafetyLevel, get_safety_manager
 from backend.nlp.provider import LanguageModelProvider, get_language_model_provider
 from backend.nlp.query_parser import QueryParser
 from backend.nlp.response_generator import ResponseGenerator
@@ -83,6 +84,17 @@ class RuleWiseOrchestrator:
                 message=f"Invalid request: {val_err}",
                 intent=UserIntent.GENERAL_CHAT,
                 error=str(val_err),
+            )
+
+        # 1b. Safety Policy Assessment (Phase 6)
+        safety_eval = get_safety_manager().evaluate_request(cleaned_message)
+        if not safety_eval.is_allowed:
+            logger.warning("Query blocked by RuleWise safety policy (%s): %s", safety_eval.category, safety_eval.reason)
+            return ChatResponse(
+                message=f"⚠️ **RuleWise Safety Policy Notice**\n\n{safety_eval.reason}\n\n{safety_eval.advisory_note or ''}",
+                intent=UserIntent.GENERAL_CHAT,
+                used_fallback=True,
+                error="SafetyPolicyViolation",
             )
 
         # Format prompt with context if history is provided

@@ -249,6 +249,7 @@ async def convert_image_to_pdf(
 
 
 @router.post("/convert/pdf-to-image", summary="Extract images from PDF pages")
+@router.post("/convert/pdf-to-images", include_in_schema=False)
 async def convert_pdf_to_image(
     file: UploadFile = File(...),
 ):
@@ -340,6 +341,7 @@ async def compress_file(
 
 
 @router.post("/pdf/merge", summary="Merge multiple PDFs into a single file")
+@router.post("/merge-pdfs", include_in_schema=False)
 async def merge_pdfs(
     files: List[UploadFile] = File(...),
 ):
@@ -348,14 +350,14 @@ async def merge_pdfs(
         raise HTTPException(status_code=400, detail="Please upload at least 2 PDF files to merge.")
 
     try:
-        merger = pypdf.PdfMerger()
+        writer = pypdf.PdfWriter()
         for f in files:
             content = await f.read()
-            merger.append(io.BytesIO(content))
+            writer.append(io.BytesIO(content))
 
         out = io.BytesIO()
-        merger.write(out)
-        merger.close()
+        writer.write(out)
+        writer.close()
         out.seek(0)
 
         return StreamingResponse(

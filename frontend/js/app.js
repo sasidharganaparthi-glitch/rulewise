@@ -1,54 +1,64 @@
 /**
- * RuleWise AI — Complete Frontend Controller (v2.0.0 Production)
+ * RuleWise AI — Complete Production Application Controller (v3.0.0)
  * 
- * Features:
- * - Real Google OAuth 2.0 / OpenID Connect token verification with Google Identity Services.
- * - Strict Role-Based Access Control (Admin Login option, server-enforced RBAC, Admin nav hidden from normal users).
- * - Complete Admin Dashboard with 4 sub-views:
- *     1) Platform Telemetry & Analytics
- *     2) User Directory Management (Search, Enable/Disable, Delete, Add User Modal)
- *     3) Official Rule Libraries (CRUD, Domain Filter, JSON Validation)
- *     4) Decision Intelligence, Audit Trail & User Logins
- * - Real Decision History: user-isolated, searchable, filterable by domain/outcome, with inspectable trace modal & deletion.
- * - Zero Dummy / Fake Chats: real conversation persistence with 30-day retention and device storage.
- * - Working Copy and Speak (SpeechSynthesis Play/Stop) buttons on assistant responses.
- * - Explore Domains with Category Filtering and "Start Advisory" shortcut.
- * - Complete removal of Workspace feature.
+ * Features & Fixes:
+ * - Real-time chat composer with instantaneous character counting (0/20000) and send-button activation.
+ * - Enter sends message, Shift+Enter inserts newline.
+ * - Image & Camera capture support (camera capture + file picker).
+ * - Web Speech API voice microphone dictation.
+ * - File Tools & Converters: Image to PDF, PDF to Images, File Compressor, PDF Merger with direct downloads.
+ * - Live search filtering for recent conversations in the sidebar.
+ * - Real Google OAuth 2.0 / OpenID Connect + Email Login + Registration + Password Reset.
+ * - Owner and Administrator Hierarchy:
+ *     - Only Owner (sasiganaparthi@gmail.com) can appoint or revoke administrators.
+ *     - Strict RBAC: normal users never see admin navigation or open admin console.
+ * - Admin Console with 6 full subviews:
+ *     1) Platform Telemetry & System Health
+ *     2) User Directory & Role Delegation (Owner only)
+ *     3) Official Rule Libraries (CRUD & JSON validation)
+ *     4) Decision Intelligence & Immutable Audit Log
+ *     5) Platform Session Monitoring & Termination
+ *     6) Configurable Safety & Harm Classification Guardrails
+ * - Real user-isolated Decision History with search, domain/outcome filtering, and proof trace inspection.
+ * - Assistant response Copy to clipboard + SpeechSynthesis TTS (Play/Stop toggle).
+ * - Zero fake/dummy chats: real multi-turn conversations stored in backend DB & device localStorage.
+ * - Renamed every occurrence of Academic Policy to RuleWise Policy.
  */
 
 (function () {
     'use strict';
 
     // -------------------------------------------------------------------------
-    // 1. Configuration, Local Storage & State
+    // 1. Configuration & Global State
     // -------------------------------------------------------------------------
     const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const API_BASE = (window.location.protocol === 'file:' || (isLocalDev && window.location.port && window.location.port !== '8000'))
         ? 'http://127.0.0.1:8000'
         : '';
 
-    const STORAGE_KEY = 'rulewise_device_chats_v2';
+    const STORAGE_KEY = 'rulewise_device_chats_v3';
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
     const state = {
         token: localStorage.getItem('rulewise_token') || null,
         user: JSON.parse(localStorage.getItem('rulewise_user') || 'null'),
         activeTab: 'chat-view',
-        activeAdminSubTab: 'telemetry',
+        activeAdminSubTab: 'admin-tab-overview',
         activeDomainId: 'dom_academic',
+        activeDomainName: 'RuleWise Policy',
         domains: [],
         rules: [],
+        conversations: [],
         currentConversationId: 'session_' + Math.random().toString(36).substring(2, 10),
         isLoadingChat: false,
         attachedFiles: [],
         currentMessages: [],
         googleClientId: null,
-        currentSpeechUtterance: null,
         activeSpeechButton: null,
     };
 
     // -------------------------------------------------------------------------
-    // 2. Device / Phone Local Storage for Chats (Saved Up to 30 Days)
+    // 2. Device Local Storage for Recent Chats
     // -------------------------------------------------------------------------
     function getDeviceChats() {
         try {
@@ -121,9 +131,21 @@
         }
     }
 
-    function openAuthModal() {
+    function openAuthModal(defaultTab = 'login') {
         const modal = document.getElementById('auth-modal');
-        if (modal) modal.classList.remove('hidden');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+
+        if (defaultTab === 'admin') {
+            const adminTabBtn = document.getElementById('tab-admin-login-btn');
+            if (adminTabBtn) adminTabBtn.click();
+        } else if (defaultTab === 'register') {
+            const regTabBtn = document.getElementById('tab-register-btn');
+            if (regTabBtn) regTabBtn.click();
+        } else {
+            const loginTabBtn = document.getElementById('tab-login-btn');
+            if (loginTabBtn) loginTabBtn.click();
+        }
     }
 
     function closeAuthModal() {
@@ -144,11 +166,22 @@
         } catch (err) {
             console.info('Google OAuth config lookup notice:', err.message);
         }
+
+        const customBtn = document.getElementById('google-signin-custom-btn');
+        if (customBtn) {
+            customBtn.onclick = () => {
+                if (window.google && window.google.accounts && window.google.accounts.id && state.googleClientId) {
+                    window.google.accounts.id.prompt();
+                } else {
+                    alert('Google Sign-In is configured on the backend. When GOOGLE_CLIENT_ID is active, one-tap login authenticates instantly.');
+                }
+            };
+        }
     }
 
     function renderGoogleButton() {
-        const wrapper = document.getElementById('google-signin-btn-wrapper');
-        if (!wrapper) return;
+        const btnContainer = document.getElementById('google-signin-btn');
+        if (!btnContainer) return;
 
         if (window.google && window.google.accounts && window.google.accounts.id && state.googleClientId) {
             try {
@@ -158,8 +191,8 @@
                     auto_select: false,
                     cancel_on_tap_outside: true,
                 });
-                wrapper.innerHTML = '';
-                window.google.accounts.id.renderButton(wrapper, {
+                btnContainer.innerHTML = '';
+                window.google.accounts.id.renderButton(btnContainer, {
                     type: 'standard',
                     theme: 'filled_black',
                     size: 'large',
@@ -168,26 +201,10 @@
                     logo_alignment: 'left',
                     width: 320,
                 });
+                const customBtn = document.getElementById('google-signin-custom-btn');
+                if (customBtn) customBtn.classList.add('hidden');
             } catch (e) {
                 console.warn('Google Identity button render error:', e);
-            }
-        } else {
-            wrapper.innerHTML = `
-                <button type="button" class="rulewise-btn google-sso-btn" id="google-manual-signin-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    <span>Sign in with Google</span>
-                </button>
-            `;
-            const manualBtn = document.getElementById('google-manual-signin-btn');
-            if (manualBtn) {
-                manualBtn.onclick = () => {
-                    alert('Google Sign-In is configured on the backend. Provide your Google Client ID via GOOGLE_CLIENT_ID environment variable for full 1-click popups.');
-                };
             }
         }
     }
@@ -262,18 +279,24 @@
         const formLogin = document.getElementById('login-form');
         const formAdminLogin = document.getElementById('admin-login-form');
         const formReg = document.getElementById('register-form');
+        const formReset = document.getElementById('reset-password-form');
         const guestPanel = document.getElementById('guest-panel');
         const loggedInPanel = document.getElementById('logged-in-panel');
 
         const isAuthenticated = state.user && state.user.role !== 'guest';
-        const isAdmin = state.user && state.user.role === 'admin';
+        const isOwner = state.user && state.user.role === 'owner';
+        const isAdmin = state.user && (state.user.role === 'admin' || isOwner);
 
         if (isAuthenticated) {
             const uname = state.user.username || state.user.email || 'Member';
             const init = uname.charAt(0).toUpperCase();
 
+            let roleLabel = 'Verified Member';
+            if (isOwner) roleLabel = 'Platform Owner';
+            else if (isAdmin) roleLabel = 'Administrator';
+
             if (nameEl) nameEl.textContent = uname;
-            if (badgeEl) badgeEl.textContent = isAdmin ? 'Administrator' : 'Verified Member';
+            if (badgeEl) badgeEl.textContent = roleLabel;
             if (avatarEl) {
                 if (state.user.picture) {
                     avatarEl.innerHTML = `<img src="${escapeHtml(state.user.picture)}" alt="User" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
@@ -289,12 +312,12 @@
                     topAvatarEl.textContent = init;
                 }
             }
-            if (topAuthBadge) topAuthBadge.textContent = isAdmin ? 'Admin' : 'Account';
+            if (topAuthBadge) topAuthBadge.textContent = isAdmin ? (isOwner ? 'Owner' : 'Admin') : 'Account';
 
             if (topLogoutBtn) topLogoutBtn.classList.remove('hidden');
             if (sidebarLogoutBtn) sidebarLogoutBtn.classList.remove('hidden');
 
-            // CRITICAL: Strictly hide Admin Console navigation item for normal users
+            // CRITICAL: Strictly hide Admin Console navigation item from normal users
             if (adminNavItem) {
                 if (isAdmin) {
                     adminNavItem.classList.remove('hidden');
@@ -308,6 +331,7 @@
             if (formLogin) formLogin.classList.add('hidden');
             if (formAdminLogin) formAdminLogin.classList.add('hidden');
             if (formReg) formReg.classList.add('hidden');
+            if (formReset) formReset.classList.add('hidden');
             if (guestPanel) guestPanel.classList.add('hidden');
             if (loggedInPanel) {
                 loggedInPanel.classList.remove('hidden');
@@ -324,7 +348,7 @@
                 const mEmail = document.getElementById('modal-user-email');
                 if (mEmail) mEmail.textContent = state.user.email || 'No email attached';
                 const mRole = document.getElementById('modal-user-role');
-                if (mRole) mRole.textContent = isAdmin ? 'Platform Administrator (Full Control)' : 'Verified Member';
+                if (mRole) mRole.textContent = isOwner ? 'Platform Owner (Root Authority)' : (isAdmin ? 'Platform Administrator' : 'Verified Member');
             }
         } else {
             if (nameEl) nameEl.textContent = 'Guest Explorer';
@@ -344,6 +368,7 @@
             if (formLogin) formLogin.classList.remove('hidden');
             if (formAdminLogin) formAdminLogin.classList.add('hidden');
             if (formReg) formReg.classList.add('hidden');
+            if (formReset) formReset.classList.add('hidden');
             if (guestPanel) guestPanel.classList.add('hidden');
             if (loggedInPanel) loggedInPanel.classList.add('hidden');
         }
@@ -353,9 +378,7 @@
         if (!confirm('Are you sure you want to log out of RuleWise AI?')) return;
         try {
             await apiRequest('/api/v1/auth/logout', { method: 'POST' });
-        } catch (e) {
-            // Ignore failure on logout endpoint
-        }
+        } catch (e) {}
         localStorage.removeItem('rulewise_token');
         localStorage.removeItem('rulewise_user');
         state.token = null;
@@ -367,36 +390,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // 6. Sidebar Toggle Controls
-    // -------------------------------------------------------------------------
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const backdrop = document.getElementById('sidebar-backdrop');
-        if (!sidebar) return;
-
-        if (window.innerWidth <= 768) {
-            sidebar.classList.toggle('open');
-            if (backdrop) {
-                if (sidebar.classList.contains('open')) {
-                    backdrop.classList.remove('hidden');
-                } else {
-                    backdrop.classList.add('hidden');
-                }
-            }
-        } else {
-            sidebar.classList.toggle('collapsed');
-        }
-    }
-
-    function closeMobileSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const backdrop = document.getElementById('sidebar-backdrop');
-        if (sidebar) sidebar.classList.remove('open');
-        if (backdrop) backdrop.classList.add('hidden');
-    }
-
-    // -------------------------------------------------------------------------
-    // 7. Tab Navigation Router (with Strict RBAC Barrier)
+    // 6. Navigation Router (with Strict RBAC Barrier)
     // -------------------------------------------------------------------------
     const viewHeadings = {
         'chat-view': { title: 'Chat & Advisory', sub: 'Conversational NLP + Deterministic Rule Authority' },
@@ -406,15 +400,15 @@
         'official-library-view': { title: 'Official Rule Library', sub: 'Audited Institutional Policies & Constraints' },
         'history-view': { title: 'Decision History', sub: 'Personalized Audit Log & Trace Inspector' },
         'simulator-view': { title: 'What-If Simulator', sub: 'Counterfactual Reasoning & Rule Modification Sandbox' },
-        'admin-view': { title: 'Administrator Console', sub: 'Platform Analysis, Official Rules, User Directory & Audit Log' },
+        'admin-view': { title: 'Administrator Dashboard', sub: 'Platform Analysis, Official Rules, User Directory & Guardrails' },
     };
 
     function switchTab(tabId) {
         // ENFORCE ADMIN RESTRICTION: Normal users can never access admin-view
         if (tabId === 'admin-view') {
-            const isAdmin = state.user && state.user.role === 'admin';
+            const isAdmin = state.user && (state.user.role === 'admin' || state.user.role === 'owner');
             if (!isAdmin) {
-                alert('Access Denied: The Admin Console is strictly restricted to authenticated Administrators.');
+                alert('Access Denied: The Administrator Console is strictly restricted to authenticated Administrators.');
                 tabId = 'chat-view';
             }
         }
@@ -449,54 +443,75 @@
         if (tabId === 'history-view') loadHistoryView();
         if (tabId === 'simulator-view') loadSimulatorView();
         if (tabId === 'admin-view') initAdminView();
+        if (tabId === 'file-tools-view') initFileTools();
 
         if (window.innerWidth <= 768) {
             closeMobileSidebar();
         }
     }
 
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (!sidebar) return;
+
+        if (window.innerWidth <= 768) {
+            sidebar.classList.toggle('open');
+            if (backdrop) {
+                if (sidebar.classList.contains('open')) {
+                    backdrop.classList.remove('hidden');
+                } else {
+                    backdrop.classList.add('hidden');
+                }
+            }
+        } else {
+            sidebar.classList.toggle('collapsed');
+        }
+    }
+
+    function closeMobileSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (sidebar) sidebar.classList.remove('open');
+        if (backdrop) backdrop.classList.add('hidden');
+    }
+
     // -------------------------------------------------------------------------
-    // 8. Zero Dummy / Fake Chats & Real Conversations Persistence
+    // 7. Recent Chats & Live Search Filter
     // -------------------------------------------------------------------------
-    async function renderRecentChatsList() {
+    async function renderRecentChatsList(filterQuery = '') {
         const list = document.getElementById('recent-chats-list');
         if (!list) return;
 
+        let convs = [];
         try {
-            const serverConvs = await apiRequest('/api/v1/chat/conversations?limit=25');
-            if (Array.isArray(serverConvs) && serverConvs.length > 0) {
-                list.innerHTML = serverConvs.map(c => `
-                    <div class="recent-chat-item ${c.id === state.currentConversationId ? 'active' : ''}" data-conv-id="${escapeHtml(c.id)}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        <span class="recent-chat-title">${escapeHtml(c.title || 'Conversation')}</span>
-                    </div>
-                `).join('');
-
-                list.querySelectorAll('.recent-chat-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const convId = item.getAttribute('data-conv-id');
-                        if (convId) loadConversationSession(convId);
-                    });
-                });
-                return;
+            const serverConvs = await apiRequest('/api/v1/chat/conversations?limit=50');
+            if (Array.isArray(serverConvs)) {
+                convs = serverConvs;
             }
         } catch (e) {
-            // Fall back to device storage
+            convs = getDeviceChats();
         }
 
-        const deviceChats = getDeviceChats();
-        if (!deviceChats.length) {
+        if (!convs.length) {
+            convs = getDeviceChats();
+        }
+
+        state.conversations = convs;
+
+        const q = filterQuery.toLowerCase().trim();
+        const displayConvs = q ? convs.filter(c => (c.title || '').toLowerCase().includes(q)) : convs;
+
+        if (!displayConvs.length) {
             list.innerHTML = `
-                <div style="padding:12px 14px;font-size:12px;color:var(--text-muted);text-align:center;">
-                    No recent conversations. Ask a question to begin.
+                <div style="padding:14px 12px;font-size:12px;color:#94a3b8;text-align:center;">
+                    ${q ? 'No matching chats found.' : 'No recent chats. Start a new conversation above.'}
                 </div>
             `;
             return;
         }
 
-        list.innerHTML = deviceChats.map(c => `
+        list.innerHTML = displayConvs.map(c => `
             <div class="recent-chat-item ${c.id === state.currentConversationId ? 'active' : ''}" data-conv-id="${escapeHtml(c.id)}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -510,6 +525,14 @@
                 const convId = item.getAttribute('data-conv-id');
                 if (convId) loadConversationSession(convId);
             });
+        });
+    }
+
+    function initChatSearch() {
+        const searchInput = document.getElementById('search-chats-input');
+        if (!searchInput) return;
+        searchInput.addEventListener('input', () => {
+            renderRecentChatsList(searchInput.value);
         });
     }
 
@@ -552,7 +575,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // 9. Speech Synthesis (TTS Play / Stop Toggle)
+    // 8. Speech Synthesis (TTS Play / Stop Toggle)
     // -------------------------------------------------------------------------
     function toggleSpeechSynthesis(text, btnElement) {
         if (!('speechSynthesis' in window)) {
@@ -562,7 +585,6 @@
 
         const span = btnElement.querySelector('span');
 
-        // If currently speaking this utterance, stop it
         if (window.speechSynthesis.speaking && state.activeSpeechButton === btnElement) {
             window.speechSynthesis.cancel();
             if (span) span.textContent = 'Speak';
@@ -571,7 +593,6 @@
             return;
         }
 
-        // Cancel any active speech
         window.speechSynthesis.cancel();
         if (state.activeSpeechButton) {
             const prevSpan = state.activeSpeechButton.querySelector('span');
@@ -579,7 +600,6 @@
             state.activeSpeechButton.classList.remove('active');
         }
 
-        // Strip markdown syntax for natural reading
         const plainText = text
             .replace(/```[\s\S]*?```/g, 'Code block omitted.')
             .replace(/`([^`]+)`/g, '$1')
@@ -615,11 +635,11 @@
     }
 
     // -------------------------------------------------------------------------
-    // 10. Voice Recognition (Web Speech API Microphone)
+    // 9. Voice Recognition (Microphone Web Speech API)
     // -------------------------------------------------------------------------
     function initVoiceInput() {
         const micBtn = document.getElementById('mic-btn');
-        const input = document.getElementById('chat-input');
+        const input = document.getElementById('user-input') || document.getElementById('chat-input');
         if (!micBtn || !input) return;
 
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -654,6 +674,7 @@
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             input.value = input.value ? (input.value + ' ' + transcript) : transcript;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
             input.focus();
         };
 
@@ -670,49 +691,71 @@
     }
 
     // -------------------------------------------------------------------------
-    // 11. Workable File Uploader & Attachment Chips
+    // 10. File Uploads, Camera Capture & Attachment Chips
     // -------------------------------------------------------------------------
     function initFileUpload() {
-        const attachBtn = document.getElementById('attach-btn');
-        const fileInput = document.getElementById('chat-file-input');
-        const chipsContainer = document.getElementById('attachment-chips');
-        if (!attachBtn || !fileInput) return;
+        const fileUploadBtn = document.getElementById('file-upload-btn') || document.getElementById('attach-btn');
+        const fileUploadInput = document.getElementById('file-upload-input') || document.getElementById('chat-file-input');
+        const cameraBtn = document.getElementById('camera-btn');
+        const cameraFileInput = document.getElementById('camera-file-input');
+        const chipsContainer = document.getElementById('attached-files-container') || document.getElementById('attachment-chips');
 
-        attachBtn.onclick = () => fileInput.click();
+        if (fileUploadBtn && fileUploadInput) {
+            fileUploadBtn.onclick = () => fileUploadInput.click();
+            fileUploadInput.onchange = async () => {
+                const files = Array.from(fileUploadInput.files);
+                if (!files.length) return;
+                for (const file of files) {
+                    await uploadAndAttachFile(file, chipsContainer);
+                }
+                fileUploadInput.value = '';
+                updateComposerState();
+            };
+        }
 
-        fileInput.onchange = async () => {
-            const files = Array.from(fileInput.files);
-            if (!files.length) return;
-
-            for (const file of files) {
-                await uploadAndAttachFile(file, chipsContainer);
-            }
-            fileInput.value = '';
-        };
+        if (cameraBtn && cameraFileInput) {
+            cameraBtn.onclick = () => cameraFileInput.click();
+            cameraFileInput.onchange = async () => {
+                const files = Array.from(cameraFileInput.files);
+                if (!files.length) return;
+                for (const file of files) {
+                    await uploadAndAttachFile(file, chipsContainer);
+                }
+                cameraFileInput.value = '';
+                updateComposerState();
+            };
+        }
     }
 
     async function uploadAndAttachFile(file, chipsContainer) {
+        if (!chipsContainer) return;
+        chipsContainer.classList.remove('hidden');
+
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('files', file);
 
         const tempId = 'chip_' + Math.random().toString(36).substring(2, 8);
         const chip = document.createElement('div');
         chip.className = 'attachment-chip';
         chip.id = tempId;
         chip.innerHTML = `
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
             <span class="file-name">${escapeHtml(file.name)}</span>
-            <span class="upload-status" style="font-size:10px;color:var(--brand-primary);">(uploading...)</span>
-            <button class="remove-chip-btn">&times;</button>
+            <span class="upload-status" style="font-size:11px;color:var(--brand-primary);">(uploading...)</span>
+            <button type="button" class="remove-chip-btn" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:14px;margin-left:4px;">&times;</button>
         `;
         chipsContainer.appendChild(chip);
 
         chip.querySelector('.remove-chip-btn').onclick = () => {
             chip.remove();
             state.attachedFiles = state.attachedFiles.filter(f => f.tempId !== tempId);
+            if (!state.attachedFiles.length) {
+                chipsContainer.classList.add('hidden');
+            }
+            updateComposerState();
         };
 
         try {
@@ -734,58 +777,106 @@
             const statusEl = chip.querySelector('.upload-status');
             if (statusEl) statusEl.remove();
 
+            const uploadedFile = data.files && data.files[0] ? data.files[0] : {};
+
             state.attachedFiles.push({
                 tempId,
                 filename: file.name,
-                file_id: data.file_id,
-                extracted_text: data.extracted_text || '',
+                file_id: tempId,
+                extracted_text: uploadedFile.content || uploadedFile.summary || '',
             });
+            updateComposerState();
         } catch (err) {
             const statusEl = chip.querySelector('.upload-status');
             if (statusEl) {
                 statusEl.textContent = '(failed)';
-                statusEl.style.color = 'var(--danger)';
+                statusEl.style.color = '#ef4444';
             }
         }
     }
 
     // -------------------------------------------------------------------------
-    // 12. VIEW 1: AI Assistant & Chat Controller
+    // 11. CHAT COMPOSER — REAL-TIME STATE & MESSAGE SUBMISSION
     // -------------------------------------------------------------------------
-    function initChat() {
-        const input = document.getElementById('chat-input');
+    function updateComposerState() {
+        const input = document.getElementById('user-input') || document.getElementById('chat-input');
         const sendBtn = document.getElementById('send-btn');
-        const newChatBtn = document.getElementById('new-chat-btn');
-        const newTopicBtn = document.getElementById('new-topic-btn');
-        const domainPill = document.getElementById('chat-domain-pill');
+        const charCounter = document.getElementById('char-counter');
 
-        if (domainPill) {
-            domainPill.onclick = () => switchTab('domains-view');
-        }
+        const text = input ? input.value : '';
+        const charCount = text.length;
 
-        function triggerSend() {
-            const text = (input ? input.value : '').trim();
-            if (!text && !state.attachedFiles.length) return;
-            handleUserSubmit(text);
-            if (input) {
-                input.value = '';
-                input.style.height = 'auto';
+        if (charCounter) {
+            charCounter.textContent = `${charCount}/20000`;
+            if (charCount > 19000) {
+                charCounter.style.color = '#ef4444';
+            } else {
+                charCounter.style.color = '';
             }
         }
 
-        if (sendBtn) sendBtn.onclick = triggerSend;
+        const hasValidContent = text.trim().length > 0 || state.attachedFiles.length > 0;
+        if (sendBtn) {
+            sendBtn.disabled = !hasValidContent;
+            if (hasValidContent) {
+                sendBtn.classList.add('active');
+            } else {
+                sendBtn.classList.remove('active');
+            }
+        }
+    }
+
+    function initChat() {
+        const input = document.getElementById('user-input') || document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const chatForm = document.getElementById('chat-form');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const composerDomainTag = document.getElementById('composer-domain-tag') || document.getElementById('chat-domain-pill');
+        const headerDomainPill = document.getElementById('header-domain-pill');
+
+        // Wire RuleWise Policy selector
+        const openDomainSelector = () => switchTab('domains-view');
+        if (composerDomainTag) composerDomainTag.onclick = openDomainSelector;
+        if (headerDomainPill) headerDomainPill.onclick = openDomainSelector;
+
+        function triggerSend() {
+            if (state.isLoadingChat) return;
+            const text = (input ? input.value : '').trim();
+            if (!text && !state.attachedFiles.length) return;
+
+            handleUserSubmit(text);
+        }
 
         if (input) {
-            input.onkeydown = (e) => {
+            input.addEventListener('input', () => {
+                input.style.height = 'auto';
+                input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+                updateComposerState();
+            });
+
+            input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     triggerSend();
                 }
-            };
-            input.oninput = () => {
-                input.style.height = 'auto';
-                input.style.height = Math.min(input.scrollHeight, 180) + 'px';
-            };
+            });
+
+            // Initialize counter on load
+            updateComposerState();
+        }
+
+        if (chatForm) {
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                triggerSend();
+            });
+        }
+
+        if (sendBtn) {
+            sendBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                triggerSend();
+            });
         }
 
         function resetConversation() {
@@ -795,22 +886,30 @@
             const list = document.getElementById('messages-list');
             const hero = document.getElementById('welcome-hero');
             const starters = document.getElementById('rulewise-hero-starters');
-            const chips = document.getElementById('attachment-chips');
+            const chips = document.getElementById('attached-files-container') || document.getElementById('attachment-chips');
             if (list) list.innerHTML = '';
             if (hero) hero.classList.remove('hidden');
             if (starters) starters.classList.remove('hidden');
-            if (chips) chips.innerHTML = '';
+            if (chips) {
+                chips.innerHTML = '';
+                chips.classList.add('hidden');
+            }
+            if (input) {
+                input.value = '';
+                input.style.height = 'auto';
+            }
+            updateComposerState();
             renderRecentChatsList();
         }
 
         if (newChatBtn) newChatBtn.onclick = resetConversation;
-        if (newTopicBtn) newTopicBtn.onclick = resetConversation;
 
-        document.querySelectorAll('.hero-starter-card').forEach(card => {
+        document.querySelectorAll('.starter-card, .hero-starter-card').forEach(card => {
             card.onclick = () => {
-                const prompt = card.getAttribute('data-prompt');
+                const prompt = card.getAttribute('data-query') || card.getAttribute('data-prompt');
                 if (prompt && input) {
                     input.value = prompt;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
                     triggerSend();
                 }
             };
@@ -818,12 +917,17 @@
 
         initVoiceInput();
         initFileUpload();
+        initChatSearch();
         renderRecentChatsList();
     }
 
     async function handleUserSubmit(text) {
         if (state.isLoadingChat) return;
         state.isLoadingChat = true;
+
+        const input = document.getElementById('user-input') || document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        if (sendBtn) sendBtn.disabled = true;
 
         const hero = document.getElementById('welcome-hero');
         const starters = document.getElementById('rulewise-hero-starters');
@@ -832,11 +936,16 @@
 
         const currentAttachments = [...state.attachedFiles];
         state.attachedFiles = [];
-        const chipsContainer = document.getElementById('attachment-chips');
-        if (chipsContainer) chipsContainer.innerHTML = '';
+        const chipsContainer = document.getElementById('attached-files-container') || document.getElementById('attachment-chips');
+        if (chipsContainer) {
+            chipsContainer.innerHTML = '';
+            chipsContainer.classList.add('hidden');
+        }
 
+        // Render user message immediately
         appendUserMessage(text, currentAttachments, true);
 
+        // Render loading skeleton
         const list = document.getElementById('messages-list');
         const skeleton = document.createElement('div');
         skeleton.className = 'msg-row assistant-row skeleton-row';
@@ -876,13 +985,22 @@
 
             skeleton.remove();
             appendAssistantMessage(data, true);
+
+            // Clear input only after successful submission
+            if (input) {
+                input.value = '';
+                input.style.height = 'auto';
+            }
+            updateComposerState();
         } catch (err) {
             skeleton.remove();
             appendAssistantMessage({
-                message: `**Advisory Processing Notice:** ${err.message}. Please verify your parameters or retry.`,
+                message: `⚠️ **Advisory Notice:** ${err.message}. Please retry or verify parameters.`,
             }, true);
+            updateComposerState();
         } finally {
             state.isLoadingChat = false;
+            updateComposerState();
         }
     }
 
@@ -891,6 +1009,7 @@
 
     function appendUserMessage(text, attachments = [], shouldSave = true) {
         const list = document.getElementById('messages-list');
+        if (!list) return;
         const row = document.createElement('div');
         row.className = 'msg-row user-row';
 
@@ -933,6 +1052,7 @@
 
     function appendAssistantMessage(data, shouldSave = true) {
         const list = document.getElementById('messages-list');
+        if (!list) return;
         const row = document.createElement('div');
         row.className = 'msg-row assistant-row';
 
@@ -1058,49 +1178,237 @@
     }
 
     // -------------------------------------------------------------------------
-    // 13. VIEW: Administrator Console Controller (STRICTLY RESTRICTED TO ADMINS)
+    // 12. FILE TOOLS & CONVERTERS CONTROLLER (Phase 7)
+    // -------------------------------------------------------------------------
+    function initFileTools() {
+        // 1. Image to PDF
+        const imgInput = document.getElementById('img-to-pdf-input');
+        const imgStatus = document.getElementById('img-to-pdf-status');
+        const imgBtn = document.getElementById('img-to-pdf-btn');
+
+        if (imgInput && imgStatus && imgBtn) {
+            imgInput.onchange = () => {
+                const count = imgInput.files.length;
+                imgStatus.textContent = count ? `${count} image${count > 1 ? 's' : ''} selected` : 'No images selected';
+            };
+
+            imgBtn.onclick = async () => {
+                if (!imgInput.files.length) {
+                    alert('Please select at least one image file.');
+                    return;
+                }
+                const formData = new FormData();
+                for (const file of imgInput.files) {
+                    formData.append('files', file);
+                }
+                imgBtn.disabled = true;
+                imgBtn.textContent = 'Converting...';
+                try {
+                    const resp = await fetch(`${API_BASE}/api/v1/files/convert/image-to-pdf`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    if (!resp.ok) throw new Error(`Conversion failed with status ${resp.status}`);
+                    const blob = await resp.blob();
+                    downloadBlob(blob, 'converted_rulewise.pdf');
+                    imgStatus.textContent = 'Conversion complete! Downloaded PDF.';
+                } catch (e) {
+                    alert('Conversion error: ' + e.message);
+                } finally {
+                    imgBtn.disabled = false;
+                    imgBtn.textContent = 'Convert to PDF';
+                }
+            };
+        }
+
+        // 2. PDF to Image
+        const pdfInput = document.getElementById('pdf-to-img-input');
+        const pdfStatus = document.getElementById('pdf-to-img-status');
+        const pdfBtn = document.getElementById('pdf-to-img-btn');
+
+        if (pdfInput && pdfStatus && pdfBtn) {
+            pdfInput.onchange = () => {
+                pdfStatus.textContent = pdfInput.files.length ? pdfInput.files[0].name : 'No PDF selected';
+            };
+
+            pdfBtn.onclick = async () => {
+                if (!pdfInput.files.length) {
+                    alert('Please select a PDF document.');
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('file', pdfInput.files[0]);
+                pdfBtn.disabled = true;
+                pdfBtn.textContent = 'Extracting...';
+                try {
+                    const resp = await fetch(`${API_BASE}/api/v1/files/convert/pdf-to-images`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    if (!resp.ok) throw new Error(`Extraction failed with status ${resp.status}`);
+                    const blob = await resp.blob();
+                    downloadBlob(blob, 'extracted_images.zip');
+                    pdfStatus.textContent = 'Extraction complete! Downloaded ZIP archive.';
+                } catch (e) {
+                    alert('Extraction error: ' + e.message);
+                } finally {
+                    pdfBtn.disabled = false;
+                    pdfBtn.textContent = 'Extract Images';
+                }
+            };
+        }
+
+        // 3. File Compressor
+        const compInput = document.getElementById('compress-input');
+        const compQuality = document.getElementById('compress-quality');
+        const qualVal = document.getElementById('quality-val');
+        const compStatus = document.getElementById('compress-status');
+        const compBtn = document.getElementById('compress-btn');
+
+        if (compQuality && qualVal) {
+            compQuality.oninput = () => {
+                qualVal.textContent = compQuality.value + '%';
+            };
+        }
+
+        if (compInput && compBtn && compStatus) {
+            compInput.onchange = () => {
+                compStatus.textContent = compInput.files.length ? compInput.files[0].name : 'No file selected';
+            };
+
+            compBtn.onclick = async () => {
+                if (!compInput.files.length) {
+                    alert('Please select a file to compress.');
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('file', compInput.files[0]);
+                formData.append('quality', compQuality ? compQuality.value : '60');
+                compBtn.disabled = true;
+                compBtn.textContent = 'Compressing...';
+                try {
+                    const resp = await fetch(`${API_BASE}/api/v1/files/compress`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    if (!resp.ok) throw new Error(`Compression failed with status ${resp.status}`);
+                    const blob = await resp.blob();
+                    const ext = compInput.files[0].name.split('.').pop() || 'pdf';
+                    downloadBlob(blob, `compressed_rulewise.${ext}`);
+                    compStatus.textContent = 'File compressed and downloaded!';
+                } catch (e) {
+                    alert('Compression error: ' + e.message);
+                } finally {
+                    compBtn.disabled = false;
+                    compBtn.textContent = 'Compress File';
+                }
+            };
+        }
+
+        // 4. PDF Merger
+        const mergeInput = document.getElementById('merge-pdf-input');
+        const mergeStatus = document.getElementById('merge-pdf-status');
+        const mergeBtn = document.getElementById('merge-pdf-btn');
+
+        if (mergeInput && mergeBtn && mergeStatus) {
+            mergeInput.onchange = () => {
+                const count = mergeInput.files.length;
+                mergeStatus.textContent = count ? `${count} PDFs selected` : 'Select 2+ PDF files';
+            };
+
+            mergeBtn.onclick = async () => {
+                if (mergeInput.files.length < 2) {
+                    alert('Please select at least 2 PDF files to merge.');
+                    return;
+                }
+                const formData = new FormData();
+                for (const file of mergeInput.files) {
+                    formData.append('files', file);
+                }
+                mergeBtn.disabled = true;
+                mergeBtn.textContent = 'Merging...';
+                try {
+                    const resp = await fetch(`${API_BASE}/api/v1/files/merge-pdfs`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    if (!resp.ok) throw new Error(`Merge failed with status ${resp.status}`);
+                    const blob = await resp.blob();
+                    downloadBlob(blob, 'merged_rulewise.pdf');
+                    mergeStatus.textContent = 'Merged successfully! Downloaded PDF.';
+                } catch (e) {
+                    alert('Merge error: ' + e.message);
+                } finally {
+                    mergeBtn.disabled = false;
+                    mergeBtn.textContent = 'Merge PDFs';
+                }
+            };
+        }
+    }
+
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // -------------------------------------------------------------------------
+    // 13. ADMINISTRATOR CONSOLE CONTROLLER (Strictly Owner/Admin Restricted)
     // -------------------------------------------------------------------------
     async function initAdminView() {
-        const isAdmin = state.user && state.user.role === 'admin';
+        const isOwner = state.user && state.user.role === 'owner';
+        const isAdmin = state.user && (state.user.role === 'admin' || isOwner);
+
         if (!isAdmin) {
             alert('Access Denied: The Administrator Console is strictly restricted to authenticated Administrators.');
             switchTab('chat-view');
             return;
         }
 
-        // Setup subnavigation tabs
-        const subNavBtns = document.querySelectorAll('#admin-subnav-bar .admin-subnav-btn');
+        // Subnavigation setup
+        const subNavBtns = document.querySelectorAll('#admin-subnav-container .admin-subnav-btn');
         subNavBtns.forEach(btn => {
             btn.onclick = () => {
                 subNavBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const subtab = btn.getAttribute('data-subtab');
+                const subtab = btn.getAttribute('data-admin-tab');
                 switchAdminSubTab(subtab);
             };
         });
 
-        // Initialize active subview
-        switchAdminSubTab(state.activeAdminSubTab || 'telemetry');
+        switchAdminSubTab(state.activeAdminSubTab || 'admin-tab-overview');
     }
 
-    function switchAdminSubTab(subtab) {
-        state.activeAdminSubTab = subtab;
-        const subviews = ['telemetry', 'users', 'rules', 'decisions'];
-        subviews.forEach(s => {
-            const el = document.getElementById(`admin-subview-${s}`);
-            if (el) {
-                if (s === subtab) {
-                    el.classList.remove('hidden');
-                } else {
-                    el.classList.add('hidden');
-                }
+    function switchAdminSubTab(subtabId) {
+        state.activeAdminSubTab = subtabId;
+        const allPanels = [
+            'admin-tab-overview',
+            'admin-tab-users',
+            'admin-tab-rules',
+            'admin-tab-decisions',
+            'admin-tab-sessions',
+            'admin-tab-safety',
+        ];
+
+        allPanels.forEach(id => {
+            const p = document.getElementById(id);
+            if (p) {
+                if (id === subtabId) p.classList.remove('hidden');
+                else p.classList.add('hidden');
             }
         });
 
-        if (subtab === 'telemetry') loadAdminTelemetry();
-        if (subtab === 'users') loadAdminUsers();
-        if (subtab === 'rules') loadAdminRules();
-        if (subtab === 'decisions') loadAdminDecisions();
+        if (subtabId === 'admin-tab-overview') loadAdminTelemetry();
+        if (subtabId === 'admin-tab-users') loadAdminUsers();
+        if (subtabId === 'admin-tab-rules') loadAdminRules();
+        if (subtabId === 'admin-tab-decisions') loadAdminDecisions();
+        if (subtabId === 'admin-tab-sessions') loadAdminSessions();
+        if (subtabId === 'admin-tab-safety') loadAdminSafetyPolicies();
     }
 
     async function loadAdminTelemetry() {
@@ -1118,13 +1426,19 @@
             setTxt('admin-stat-convs', m.total_conversations);
             setTxt('admin-stat-queries', m.total_ai_queries);
             setTxt('admin-stat-rules', m.official_rules_count);
-            setTxt('admin-stat-health', overview.application_health?.status || 'HEALTHY');
-            setTxt('admin-stat-uptime', overview.application_health?.uptime_seconds ? `${Math.floor(overview.application_health.uptime_seconds / 60)} min` : '99.98%');
-            setTxt('admin-stat-model', overview.ai_performance?.model_engine || 'Gemini 2.5 Flash');
-            setTxt('admin-stat-cache', overview.ai_performance?.cache_hit_rate || '94.2%');
 
-            const refBtn = document.getElementById('refresh-telemetry-btn');
-            if (refBtn) refBtn.onclick = loadAdminTelemetry;
+            const aiStatusEl = document.getElementById('admin-ai-health-status');
+            if (aiStatusEl) {
+                const status = overview.ai_status || {};
+                aiStatusEl.innerHTML = `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;">
+                        <div><strong>Model Engine:</strong> <code>${escapeHtml(status.model_configured || 'Gemini 3.5 Flash')}</code></div>
+                        <div><strong>Provider Status:</strong> <span class="badge ${status.provider_available ? 'success' : 'error'}">${status.provider_available ? 'Online (Active)' : 'Offline (Fallback Ready)'}</span></div>
+                        <div><strong>Symbolic Authority:</strong> <span class="badge success">Active (100% Deterministic)</span></div>
+                        <div><strong>Live Grounding:</strong> <span class="badge success">Ready</span></div>
+                    </div>
+                `;
+            }
         } catch (e) {
             console.error('Failed to load telemetry:', e);
         }
@@ -1136,10 +1450,11 @@
         wrap.innerHTML = '<div class="loading-placeholder">Loading user directory...</div>';
 
         try {
-            const users = await apiRequest('/api/v1/admin/users?limit=100');
+            const data = await apiRequest('/api/v1/admin/users?limit=100');
+            const users = data.items || [];
             renderUsersTable(users);
 
-            const searchInput = document.getElementById('admin-user-search-input');
+            const searchInput = document.getElementById('admin-user-search');
             if (searchInput) {
                 searchInput.oninput = () => {
                     const q = searchInput.value.toLowerCase().trim();
@@ -1173,6 +1488,8 @@
             return;
         }
 
+        const isOwner = state.user && state.user.role === 'owner';
+
         wrap.innerHTML = `
             <table class="rules-table">
                 <thead>
@@ -1188,7 +1505,10 @@
                 <tbody>
                     ${users.map(u => {
                         const isActive = u.is_active !== 0;
-                        const isAdmin = u.role === 'admin';
+                        const userRole = u.role || 'user';
+                        const isTargetOwner = userRole === 'owner';
+                        const isTargetAdmin = userRole === 'admin';
+
                         return `
                             <tr>
                                 <td>
@@ -1197,8 +1517,8 @@
                                 </td>
                                 <td>${escapeHtml(u.email || '—')}</td>
                                 <td>
-                                    <span class="badge ${isAdmin ? 'admin-badge' : 'neutral'}">
-                                        ${isAdmin ? 'Administrator' : 'Normal User'}
+                                    <span class="badge ${isTargetOwner ? 'admin-badge' : (isTargetAdmin ? 'info' : 'neutral')}">
+                                        ${isTargetOwner ? 'Owner' : (isTargetAdmin ? 'Administrator' : 'Normal User')}
                                     </span>
                                 </td>
                                 <td>
@@ -1208,11 +1528,21 @@
                                 </td>
                                 <td><small>${new Date(u.created_at || Date.now()).toLocaleDateString()}</small></td>
                                 <td>
-                                    <div style="display:flex; gap:6px;">
-                                        <button class="rulewise-btn secondary btn-sm toggle-user-status-btn" data-user-id="${escapeHtml(u.id)}" data-active="${isActive}">
-                                            ${isActive ? 'Disable' : 'Activate'}
-                                        </button>
-                                        ${!isAdmin ? `
+                                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                        ${!isTargetOwner ? `
+                                            <button class="rulewise-btn secondary btn-sm toggle-user-status-btn" data-user-id="${escapeHtml(u.id)}" data-active="${isActive}">
+                                                ${isActive ? 'Disable' : 'Activate'}
+                                            </button>
+                                        ` : ''}
+
+                                        <!-- Owner privilege: appoint/revoke admin role -->
+                                        ${isOwner && !isTargetOwner ? `
+                                            <button class="rulewise-btn ${isTargetAdmin ? 'secondary' : 'primary'} btn-sm toggle-admin-role-btn" data-user-id="${escapeHtml(u.id)}" data-role="${isTargetAdmin ? 'user' : 'admin'}">
+                                                ${isTargetAdmin ? 'Revoke Admin' : 'Appoint Admin'}
+                                            </button>
+                                        ` : ''}
+
+                                        ${!isTargetOwner ? `
                                             <button class="rulewise-btn danger btn-sm delete-user-btn" data-user-id="${escapeHtml(u.id)}" data-username="${escapeHtml(u.username)}">
                                                 Delete
                                             </button>
@@ -1242,6 +1572,22 @@
             };
         });
 
+        wrap.querySelectorAll('.toggle-admin-role-btn').forEach(btn => {
+            btn.onclick = async () => {
+                const uid = btn.getAttribute('data-user-id');
+                const targetRole = btn.getAttribute('data-role');
+                if (!confirm(`Are you sure you want to change this account role to "${targetRole}"?`)) return;
+                try {
+                    await apiRequest(`/api/v1/admin/users/${encodeURIComponent(uid)}/role?role=${encodeURIComponent(targetRole)}`, {
+                        method: 'PUT',
+                    });
+                    loadAdminUsers();
+                } catch (e) {
+                    alert('Role delegation failed: ' + e.message);
+                }
+            };
+        });
+
         wrap.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.onclick = async () => {
                 const uid = btn.getAttribute('data-user-id');
@@ -1259,11 +1605,27 @@
 
     async function loadAdminRules() {
         const wrap = document.getElementById('admin-rules-table-wrap');
+        const domFilter = document.getElementById('admin-rules-domain-filter');
         if (!wrap) return;
         wrap.innerHTML = '<div class="loading-placeholder">Loading official rule library...</div>';
 
+        // Populate domains dropdown if needed
         try {
-            const data = await apiRequest('/api/v1/admin/official-rules');
+            const domData = await apiRequest('/api/v1/domains');
+            if (domFilter && domData.items) {
+                const cur = domFilter.value;
+                domFilter.innerHTML = '<option value="">All Domains</option>' +
+                    domData.items.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('');
+                domFilter.value = cur;
+                domFilter.onchange = loadAdminRules;
+            }
+        } catch (e) {}
+
+        const filterDomain = domFilter ? domFilter.value : '';
+        const url = filterDomain ? `/api/v1/admin/official-rules?domain_id=${encodeURIComponent(filterDomain)}` : '/api/v1/admin/official-rules';
+
+        try {
+            const data = await apiRequest(url);
             const rules = data.items || [];
 
             const addRuleBtn = document.getElementById('admin-add-rule-btn');
@@ -1272,7 +1634,7 @@
             }
 
             if (!rules.length) {
-                wrap.innerHTML = '<div class="empty-state">No official rules defined yet.</div>';
+                wrap.innerHTML = '<div class="empty-state">No official rules found. Click "+ Add Rule" to author institutional policies.</div>';
                 return;
             }
 
@@ -1322,7 +1684,7 @@
             wrap.querySelectorAll('.admin-del-rule-btn').forEach(btn => {
                 btn.onclick = async () => {
                     const rid = btn.getAttribute('data-rule-id');
-                    if (!confirm(`Are you sure you want to delete rule "${rid}"?`)) return;
+                    if (!confirm(`Are you sure you want to delete official rule "${rid}"?`)) return;
                     try {
                         await apiRequest(`/api/v1/admin/rules/${encodeURIComponent(rid)}`, { method: 'DELETE' });
                         loadAdminRules();
@@ -1350,7 +1712,6 @@
 
         if (!modal) return;
 
-        // Populate domains in select dropdown
         try {
             const domData = await apiRequest('/api/v1/domains');
             if (domSelect && domData.items) {
@@ -1385,45 +1746,44 @@
     }
 
     async function loadAdminDecisions() {
-        const statsWrap = document.getElementById('admin-decision-stats-wrap');
-        const auditWrap = document.getElementById('admin-audit-log-wrap');
-        const loginsWrap = document.getElementById('admin-logins-table-wrap');
+        const statsWrap = document.getElementById('admin-decision-analytics-wrap') || document.getElementById('admin-decision-stats-wrap');
+        const auditWrap = document.getElementById('admin-audit-logs-wrap') || document.getElementById('admin-audit-log-wrap');
 
         if (statsWrap) statsWrap.innerHTML = '<div class="loading-placeholder">Loading decision analytics...</div>';
         if (auditWrap) auditWrap.innerHTML = '<div class="loading-placeholder">Loading administrative audit log...</div>';
-        if (loginsWrap) loginsWrap.innerHTML = '<div class="loading-placeholder">Loading user logins...</div>';
 
         try {
-            // 1. Decision stats
-            const stats = await apiRequest('/api/v1/admin/decision-analytics');
+            const data = await apiRequest('/api/v1/admin/decision-analytics');
+            const summary = data.summary || {};
+
             if (statsWrap) {
                 statsWrap.innerHTML = `
                     <div class="rulewise-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
                         <div class="stat-card">
                             <div class="stat-label">Total Platform Decisions</div>
-                            <div class="stat-val">${stats.total_evaluations || 0}</div>
+                            <div class="stat-val">${summary.total_evaluations || 0}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Approved Decisions</div>
-                            <div class="stat-val" style="color:var(--success);">${stats.approved_count || 0}</div>
+                            <div class="stat-val" style="color:var(--success);">${summary.approved_count || 0}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Rejected Decisions</div>
-                            <div class="stat-val" style="color:var(--danger);">${stats.rejected_count || 0}</div>
+                            <div class="stat-val" style="color:var(--danger);">${summary.rejected_count || 0}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Approval Rate</div>
-                            <div class="stat-val">${stats.approval_rate_percent || 0}%</div>
+                            <div class="stat-val">${summary.approval_rate_percent || 0}%</div>
                         </div>
                     </div>
                 `;
             }
 
-            // 2. Admin audit logs
-            const audits = await apiRequest('/api/v1/admin/audit-logs?limit=30');
+            const auditsData = await apiRequest('/api/v1/admin/audit-logs?limit=40');
+            const audits = auditsData.items || [];
             if (auditWrap) {
                 if (!audits.length) {
-                    auditWrap.innerHTML = '<div class="empty-state">No administrative audit records yet.</div>';
+                    auditWrap.innerHTML = '<div class="empty-state">No administrative audit records logged yet.</div>';
                 } else {
                     auditWrap.innerHTML = `
                         <table class="rules-table">
@@ -1440,9 +1800,9 @@
                                 ${audits.map(a => `
                                     <tr>
                                         <td><small>${new Date(a.created_at || Date.now()).toLocaleTimeString()}</small></td>
-                                        <td><strong>${escapeHtml(a.admin_username || a.admin_id || 'System')}</strong></td>
+                                        <td><strong>${escapeHtml(a.admin_username || a.admin_email || 'System')}</strong></td>
                                         <td><span class="badge info">${escapeHtml(a.action)}</span></td>
-                                        <td><code>${escapeHtml(a.resource_type || '—')}:${escapeHtml(a.resource_id || '')}</code></td>
+                                        <td><code>${escapeHtml(a.target_type || '')}:${escapeHtml(a.target_id || '')}</code></td>
                                         <td><small>${escapeHtml(JSON.stringify(a.details || {}))}</small></td>
                                     </tr>
                                 `).join('')}
@@ -1451,56 +1811,119 @@
                     `;
                 }
             }
-
-            // 3. User logins
-            const loginsData = await apiRequest('/api/v1/admin/logins?limit=30');
-            const logins = loginsData.items || [];
-            if (loginsWrap) {
-                if (!logins.length) {
-                    loginsWrap.innerHTML = '<div class="empty-state">No login attempts recorded yet.</div>';
-                } else {
-                    loginsWrap.innerHTML = `
-                        <table class="rules-table">
-                            <thead>
-                                <tr>
-                                    <th>Timestamp</th>
-                                    <th>Username</th>
-                                    <th>Gmail / Email</th>
-                                    <th>Status</th>
-                                    <th>IP Address</th>
-                                    <th>Password Security</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${logins.map(l => {
-                                    const isSuccess = l.status === 'SUCCESS' || l.status === 'REGISTERED';
-                                    return `
-                                        <tr>
-                                            <td><small>${new Date(l.created_at || Date.now()).toLocaleString()}</small></td>
-                                            <td><strong>${escapeHtml(l.username)}</strong></td>
-                                            <td>${escapeHtml(l.email || '—')}</td>
-                                            <td>
-                                                <span class="badge ${isSuccess ? 'success' : 'error'}">
-                                                    ${escapeHtml(l.status)}
-                                                </span>
-                                            </td>
-                                            <td><code>${escapeHtml(l.ip_address || '127.0.0.1')}</code></td>
-                                            <td><span class="badge success">🔒 Salted PBKDF2 Encrypted</span></td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                }
-            }
         } catch (e) {
-            console.error('Failed to load decisions/audits:', e);
+            console.error('Failed to load decision analytics:', e);
+        }
+    }
+
+    async function loadAdminSessions() {
+        const wrap = document.getElementById('admin-sessions-table-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = '<div class="loading-placeholder">Loading active sessions...</div>';
+
+        const refBtn = document.getElementById('refresh-admin-sessions-btn');
+        if (refBtn) refBtn.onclick = loadAdminSessions;
+
+        try {
+            const data = await apiRequest('/api/v1/admin/sessions?limit=50');
+            const sessions = data.items || [];
+
+            if (!sessions.length) {
+                wrap.innerHTML = '<div class="empty-state">No active sessions found.</div>';
+                return;
+            }
+
+            wrap.innerHTML = `
+                <table class="rules-table">
+                    <thead>
+                        <tr>
+                            <th>Session ID</th>
+                            <th>Title</th>
+                            <th>User ID</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sessions.map(s => `
+                            <tr>
+                                <td><code>${escapeHtml(s.id)}</code></td>
+                                <td><strong>${escapeHtml(s.title || 'Untitled')}</strong></td>
+                                <td>${escapeHtml(s.user_id || 'Guest')}</td>
+                                <td><small>${new Date(s.created_at || Date.now()).toLocaleString()}</small></td>
+                                <td>
+                                    <button class="rulewise-btn danger btn-sm terminate-session-btn" data-conv-id="${escapeHtml(s.id)}">
+                                        Terminate
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            wrap.querySelectorAll('.terminate-session-btn').forEach(b => {
+                b.onclick = async () => {
+                    const cid = b.getAttribute('data-conv-id');
+                    if (!confirm(`Terminate session "${cid}"?`)) return;
+                    try {
+                        await apiRequest(`/api/v1/admin/sessions/${encodeURIComponent(cid)}`, { method: 'DELETE' });
+                        loadAdminSessions();
+                    } catch (e) {
+                        alert('Termination failed: ' + e.message);
+                    }
+                };
+            });
+        } catch (e) {
+            wrap.innerHTML = `<div class="empty-state text-danger">Failed to load sessions: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    async function loadAdminSafetyPolicies() {
+        const enabledToggle = document.getElementById('safety-enabled-toggle');
+        const dualUseToggle = document.getElementById('safety-dual-use-toggle');
+        const customKeywords = document.getElementById('safety-custom-keywords');
+        const statusMsg = document.getElementById('safety-policy-status-msg');
+        const saveBtn = document.getElementById('save-safety-policies-btn');
+
+        try {
+            const data = await apiRequest('/api/v1/admin/safety-policies');
+            if (enabledToggle) enabledToggle.checked = data.enabled !== false;
+            if (dualUseToggle) dualUseToggle.checked = data.allow_educational_dual_use !== false;
+            if (customKeywords) customKeywords.value = (data.custom_blocked_keywords || []).join(', ');
+        } catch (e) {}
+
+        if (saveBtn) {
+            saveBtn.onclick = async () => {
+                const kwList = customKeywords ? customKeywords.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+                try {
+                    await apiRequest('/api/v1/admin/safety-policies', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            enabled: enabledToggle ? enabledToggle.checked : true,
+                            allow_educational_dual_use: dualUseToggle ? dualUseToggle.checked : true,
+                            custom_blocked_keywords: kwList,
+                        }),
+                    });
+                    if (statusMsg) {
+                        statusMsg.textContent = 'Safety policies updated and active across engine!';
+                        statusMsg.style.color = '#10b981';
+                        setTimeout(() => { statusMsg.textContent = ''; }, 3000);
+                    }
+                } catch (e) {
+                    alert('Save failed: ' + e.message);
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save Safety Policies';
+                }
+            };
         }
     }
 
     // -------------------------------------------------------------------------
-    // 14. VIEW: Explore Domains with Category Filtering
+    // 14. EXPLORE DOMAINS & DECISION CATALOG (Phase 2 & 7)
     // -------------------------------------------------------------------------
     async function loadDomainsView() {
         const grid = document.getElementById('domains-grid');
@@ -1512,7 +1935,6 @@
             state.domains = data.items || [];
             renderDomainsGrid(state.domains);
 
-            // Wire category pills
             const pills = document.querySelectorAll('#domain-category-pills .admin-subnav-btn');
             pills.forEach(pill => {
                 pill.onclick = () => {
@@ -1564,11 +1986,9 @@
             btn.onclick = () => {
                 const domId = btn.getAttribute('data-domain-id');
                 const domName = btn.getAttribute('data-domain-name');
-                state.activeDomainId = domId;
-                const pill = document.getElementById('chat-domain-pill');
-                if (pill) pill.textContent = domName;
+                setActiveDomain(domId, domName);
                 switchTab('chat-view');
-                const input = document.getElementById('chat-input');
+                const input = document.getElementById('user-input') || document.getElementById('chat-input');
                 if (input) {
                     input.placeholder = `Ask a question under ${domName} policy...`;
                     input.focus();
@@ -1579,17 +1999,26 @@
         grid.querySelectorAll('.select-domain-btn').forEach(btn => {
             btn.onclick = () => {
                 const domId = btn.getAttribute('data-domain-id');
-                state.activeDomainId = domId;
+                const matched = state.domains.find(d => d.id === domId);
+                setActiveDomain(domId, matched ? matched.name : 'RuleWise Policy');
                 renderDomainsGrid(state.domains);
-                const activeDom = state.domains.find(d => d.id === domId);
-                const pill = document.getElementById('chat-domain-pill');
-                if (pill && activeDom) pill.textContent = activeDom.name;
             };
         });
     }
 
+    function setActiveDomain(domainId, domainName) {
+        state.activeDomainId = domainId;
+        state.activeDomainName = domainName;
+
+        const compLabel = document.getElementById('composer-domain-label');
+        if (compLabel) compLabel.textContent = domainName;
+
+        const activeIndicator = document.getElementById('active-domain-indicator');
+        if (activeIndicator) activeIndicator.textContent = domainName;
+    }
+
     // -------------------------------------------------------------------------
-    // 15. VIEW: Official Rule Library (Read-only Institutional View)
+    // 15. OFFICIAL RULE LIBRARY (Read-only Institutional Policy View)
     // -------------------------------------------------------------------------
     async function loadOfficialLibraryView() {
         const wrap = document.getElementById('official-rules-container');
@@ -1637,7 +2066,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // 16. VIEW: Decision History & Audits (User-Isolated, Filterable, Traceable)
+    // 16. DECISION HISTORY & AUDIT LOG (User-Isolated, Filterable, Traceable)
     // -------------------------------------------------------------------------
     async function loadHistoryView() {
         const container = document.getElementById('evaluations-history-list');
@@ -1662,7 +2091,7 @@
 
         try {
             const data = await apiRequest(`/api/v1/history/evaluations?${params.toString()}`);
-            const items = data.items || [];
+            const items = Array.isArray(data) ? data : (data.items || []);
 
             if (!items.length) {
                 container.innerHTML = `
@@ -1702,7 +2131,7 @@
                                     <td><small>${new Date(h.created_at || Date.now()).toLocaleString()}</small></td>
                                     <td>
                                         <strong>${escapeHtml(subject)}</strong>
-                                        ${h.question && h.question !== subject ? `<br><small style="color:var(--text-muted);">${escapeHtml(h.question)}</small>` : ''}
+                                        ${h.question && h.question !== subject ? `<br><small style="color:#94a3b8;">${escapeHtml(h.question)}</small>` : ''}
                                     </td>
                                     <td><code>${escapeHtml(h.domain_id || 'academic')}</code></td>
                                     <td>${outcomeBadge}</td>
@@ -1744,7 +2173,6 @@
                 };
             });
 
-            // Wire input filters
             if (qInput && !qInput.onchange) qInput.onchange = loadHistoryView;
             if (domFilter && !domFilter.onchange) domFilter.onchange = loadHistoryView;
             if (outFilter && !outFilter.onchange) outFilter.onchange = loadHistoryView;
@@ -1754,7 +2182,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // 17. VIEW: Visual Rule Studio & What-If Simulator
+    // 17. VISUAL RULE STUDIO & WHAT-IF SIMULATOR
     // -------------------------------------------------------------------------
     function initRuleStudio() {
         const addCondBtn = document.getElementById('add-condition-btn');
@@ -1779,7 +2207,7 @@
                         <option value="<">&lt;</option>
                     </select>
                     <input type="text" class="form-control cond-val" placeholder="Value (e.g. 7.0)" style="flex:2;">
-                    <button type="button" class="icon-btn remove-cond-btn" style="color:var(--danger);">&times;</button>
+                    <button type="button" class="icon-btn remove-cond-btn" style="color:#ef4444;">&times;</button>
                 `;
                 condsList.appendChild(item);
                 item.querySelector('.remove-cond-btn').onclick = () => item.remove();
@@ -1878,7 +2306,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // 18. Modals & Authentication Handlers
+    // 18. MODALS & AUTHENTICATION HANDLERS
     // -------------------------------------------------------------------------
     function initModals() {
         // Trace Modal Close
@@ -1887,10 +2315,10 @@
 
         // Top Auth, Sidebar Auth, and Logout Triggers
         const topAuthBtn = document.getElementById('top-auth-btn');
-        if (topAuthBtn) topAuthBtn.onclick = openAuthModal;
+        if (topAuthBtn) topAuthBtn.onclick = () => openAuthModal('login');
 
         const sidebarAuthBtn = document.getElementById('sidebar-auth-btn');
-        if (sidebarAuthBtn) sidebarAuthBtn.onclick = openAuthModal;
+        if (sidebarAuthBtn) sidebarAuthBtn.onclick = () => openAuthModal('login');
 
         const topLogoutBtn = document.getElementById('top-logout-btn');
         if (topLogoutBtn) topLogoutBtn.onclick = handleLogout;
@@ -1916,11 +2344,12 @@
         const formLogin = document.getElementById('login-form');
         const formAdminLogin = document.getElementById('admin-login-form');
         const formReg = document.getElementById('register-form');
+        const formReset = document.getElementById('reset-password-form');
         const panelGuest = document.getElementById('guest-panel');
 
         function selectAuthTab(activeBtn, activeForm) {
             [tabLogin, tabAdminLogin, tabReg, tabGuest].forEach(b => b && b.classList.remove('active'));
-            [formLogin, formAdminLogin, formReg, panelGuest].forEach(f => f && f.classList.add('hidden'));
+            [formLogin, formAdminLogin, formReg, formReset, panelGuest].forEach(f => f && f.classList.add('hidden'));
 
             if (activeBtn) activeBtn.classList.add('active');
             if (activeForm) activeForm.classList.remove('hidden');
@@ -1933,6 +2362,20 @@
         if (tabAdminLogin) tabAdminLogin.onclick = () => selectAuthTab(tabAdminLogin, formAdminLogin);
         if (tabReg) tabReg.onclick = () => selectAuthTab(tabReg, formReg);
         if (tabGuest) tabGuest.onclick = () => selectAuthTab(tabGuest, panelGuest);
+
+        // Forgot Password link & Back to Login
+        const forgotLink = document.getElementById('forgot-password-link');
+        const backToLoginBtn = document.getElementById('back-to-login-btn');
+        if (forgotLink) {
+            forgotLink.onclick = () => {
+                selectAuthTab(null, formReset);
+            };
+        }
+        if (backToLoginBtn) {
+            backToLoginBtn.onclick = () => {
+                selectAuthTab(tabLogin, formLogin);
+            };
+        }
 
         // Standard User Login Handler
         if (formLogin) {
@@ -2032,6 +2475,31 @@
                     updateUserUI();
                     closeAuthModal();
                     renderRecentChatsList();
+                } catch (err) {
+                    if (errBox) {
+                        errBox.textContent = err.message;
+                        errBox.classList.remove('hidden');
+                    }
+                }
+            };
+        }
+
+        // Password Reset Handler
+        if (formReset) {
+            formReset.onsubmit = async (e) => {
+                e.preventDefault();
+                const em = document.getElementById('reset-email').value.trim();
+                const p = document.getElementById('reset-new-password').value;
+                const errBox = document.getElementById('auth-error-msg');
+                if (errBox) errBox.classList.add('hidden');
+
+                try {
+                    const res = await apiRequest('/api/v1/auth/reset-password', {
+                        method: 'POST',
+                        body: JSON.stringify({ email: em, new_password: p }),
+                    });
+                    alert(res.message || 'Password updated successfully!');
+                    selectAuthTab(tabLogin, formLogin);
                 } catch (err) {
                     if (errBox) {
                         errBox.textContent = err.message;
@@ -2144,7 +2612,7 @@
             };
         }
 
-        // Sidebar Navigation Toggles (Header panel button, sidebar toggle, backdrop)
+        // Sidebar Navigation Toggles
         const toggleBtn = document.getElementById('toggle-sidebar-btn');
         if (toggleBtn) toggleBtn.onclick = toggleSidebar;
 

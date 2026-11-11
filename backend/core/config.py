@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = None
     GOOGLE_REDIRECT_URI: Optional[str] = None
 
-    # Administrator initial configuration
+    # Administrator and Owner configuration
+    OWNER_EMAIL: str = "sasiganaparthi@gmail.com"
     ADMIN_EMAIL: str = "sasiganaparthi@gmail.com"
     ADMIN_INITIAL_PASSWORD: Optional[str] = None
 

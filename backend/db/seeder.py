@@ -26,25 +26,27 @@ def seed_database(db: DatabaseManager) -> None:
     domain_repo = DomainRepository(db)
     rule_repo = RuleRepository(db)
 
-    # 1. Seed Administrator Account (Secure Provisioning)
+    # 1. Seed Owner Account (Secure Root Provisioning)
     from backend.core.config import get_settings
     settings = get_settings()
 
-    admin_email = getattr(settings, "ADMIN_EMAIL", "sasiganaparthi@gmail.com")
-    admin_pwd = getattr(settings, "ADMIN_INITIAL_PASSWORD", None) or "Admin#RuleWise2026"
+    owner_email = getattr(settings, "OWNER_EMAIL", "sasiganaparthi@gmail.com")
+    owner_pwd = getattr(settings, "ADMIN_INITIAL_PASSWORD", None) or "Admin#RuleWise2026"
 
-    admin = user_repo.get_by_email(admin_email) or user_repo.get_by_username("sasiganaparthi")
-    if not admin:
-        admin = user_repo.create_user(
+    owner = user_repo.get_by_email(owner_email) or user_repo.get_by_username("sasiganaparthi")
+    if not owner:
+        owner = user_repo.create_user(
             username="sasiganaparthi",
-            password=admin_pwd,
-            email=admin_email,
-            role="admin",
+            password=owner_pwd,
+            email=owner_email,
+            role="owner",
         )
-        logger.info("Provisioned initial authorized administrator account: %s", admin_email)
-    elif admin.get("role") != "admin":
-        user_repo.update_user_role(admin["id"], "admin")
-        logger.info("Elevated account %s to admin role.", admin_email)
+        logger.info("Provisioned initial authorized owner account: %s", owner_email)
+    elif owner.get("role") != "owner":
+        user_repo.update_user_role(owner["id"], "owner")
+        logger.info("Elevated account %s to owner role.", owner_email)
+
+    admin = owner
 
     demo_user = user_repo.get_by_username("demo_user")
     if not demo_user:
@@ -56,11 +58,11 @@ def seed_database(db: DatabaseManager) -> None:
         )
         logger.info("Created default user account: demo_user")
 
-    # 2. Domain 1: Academic Eligibility (Preserving original files)
+    # 2. Domain 1: RuleWise Eligibility (Preserving original files)
     academic_domain = domain_repo.get_by_slug("academic-eligibility")
     if not academic_domain:
         academic_domain = domain_repo.create_domain(
-            name="Academic Policy & Eligibility",
+            name="RuleWise Policy & Eligibility",
             slug="academic-eligibility",
             description="Evaluates student course eligibility, prerequisite chains, and minimum GPA requirements.",
             category="education",

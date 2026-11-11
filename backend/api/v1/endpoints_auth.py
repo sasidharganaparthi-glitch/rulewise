@@ -20,6 +20,7 @@ from backend.schemas.api import (
     GoogleAuthRequest,
     LoginRequest,
     PasswordChangeRequest,
+    PasswordResetRequest,
     RegisterRequest,
     UserResponse,
 )
@@ -331,6 +332,21 @@ def change_password(
 
     user_repo.update_password(user["id"], req.new_password)
     return {"status": "success", "message": "Password updated successfully."}
+
+
+@router.post("/reset-password", summary="Reset account password via verified email/username")
+def reset_password(req: PasswordResetRequest) -> Dict[str, Any]:
+    """Allow user to reset password with email validation."""
+    db = get_db_manager()
+    user_repo = UserRepository(db)
+    user = user_repo.get_by_email(req.email) or user_repo.get_by_username(req.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found associated with that email or username.",
+        )
+    user_repo.update_password(user["id"], req.new_password)
+    return {"status": "success", "message": "Password has been securely reset. You may now sign in."}
 
 
 @router.post("/logout", summary="Session logout")

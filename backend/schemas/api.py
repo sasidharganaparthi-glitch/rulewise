@@ -60,16 +60,21 @@ class PasswordChangeRequest(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=100)
 
 
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., description="Registered user email or username")
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+
 class AdminUserCreateRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: str = Field(...)
     password: str = Field(..., min_length=6, max_length=100)
-    role: str = Field("user", pattern="^(admin|user)$")
+    role: str = Field("user", pattern="^(owner|admin|user)$")
 
 
 class AdminUserStatusUpdateRequest(BaseModel):
     is_active: Optional[bool] = None
-    role: Optional[str] = Field(None, pattern="^(admin|user)$")
+    role: Optional[str] = Field(None, pattern="^(owner|admin|user)$")
 
 
 class UserResponse(BaseModel):

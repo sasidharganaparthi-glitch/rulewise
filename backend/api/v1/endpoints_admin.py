@@ -37,7 +37,7 @@ router = APIRouter(prefix="/admin", tags=["Admin Console & Telemetry"])
 
 
 def require_admin(current_user: Dict[str, Any] = Depends(get_current_user_required)) -> Dict[str, Any]:
-    """Dependency enforcing that the requesting user holds active administrator privileges."""
+    """Dependency enforcing that the requesting user holds active administrator or owner privileges."""
     sub = current_user.get("sub", "")
     username = current_user.get("username", "")
 
@@ -45,10 +45,21 @@ def require_admin(current_user: Dict[str, Any] = Depends(get_current_user_requir
     user_repo = UserRepository(db)
     u = user_repo.get_by_id(sub) or user_repo.get_by_username(username)
 
-    if not u or u.get("role") != "admin" or u.get("is_active") == 0:
+    if not u or u.get("role") not in ("owner", "admin") or u.get("is_active") == 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access restricted: Active administrator privileges are required to access this console.",
+            detail="Access restricted: Active administrator or owner privileges are required to access this console.",
+        )
+    return u
+
+
+def require_owner(current_user: Dict[str, Any] = Depends(get_current_user_required)) -> Dict[str, Any]:
+    """Dependency enforcing that the requesting user holds the platform Owner role."""
+    u = require_admin(current_user)
+    if u.get("role") != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted: Platform Owner authority is strictly required to appoint or remove administrators.",
         )
     return u
 
@@ -220,9 +231,22 @@ def update_user_status(
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # Guard: Cannot modify the Owner account
+    if target_user.get("role") == "owner" and admin.get("role") != "owner":
+        raise HTTPException(status_code=403, detail="Permission denied: Cannot modify the platform Owner account.")
+
+    # Guard: Only the Owner can appoint or remove administrators
+    if req.role is not None and req.role != target_user.get("role"):
+        if req.role in ("admin", "owner") or target_user.get("role") in ("admin", "owner"):
+            if admin.get("role") != "owner":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Hierarchy violation: Only the platform Owner can appoint or remove administrators.",
+                )
+
     # Guard: prevent deactivating the last active administrator
-    if req.is_active is False or (req.role and req.role != "admin"):
-        if target_user.get("role") == "admin":
+    if req.is_active is False or (req.role and req.role not in ("admin", "owner")):
+        if target_user.get("role") in ("admin", "owner"):
             admin_count = user_repo.count_admins()
             if admin_count <= 1:
                 raise HTTPException(
@@ -246,6 +270,25 @@ def update_user_status(
     return {"status": "success", "user": updated}
 
 
+@router.put("/users/{user_id}/role", summary="Owner appoint or revoke administrator privileges")
+def update_user_role(
+    user_id: str,
+    role: str = Query(..., description="Target role (admin, user)"),
+    owner: Dict[str, Any] = Depends(require_owner),
+) -> Dict[str, Any]:
+    """Strictly allows the platform Owner to appoint or revoke administrator privileges."""
+    db = get_db_manager()
+    user_repo = UserRepository(db)
+    target = user_repo.get_by_id(user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if target.get("role") == "owner":
+        raise HTTPException(status_code=400, detail="Cannot modify Owner role.")
+    user_repo.update_user_role(user_id, role)
+    log_admin_action(owner["id"], "APPOINT_ROLE", "user", user_id, {"role": role, "username": target["username"]})
+    return {"status": "success", "user": user_repo.get_by_id(user_id)}
+
+
 @router.delete("/users/{user_id}", summary="Admin delete user account")
 def delete_user(
     user_id: str,
@@ -261,7 +304,12 @@ def delete_user(
     if not target:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    if target.get("role") == "admin":
+    if target.get("role") == "owner":
+        raise HTTPException(status_code=400, detail="Cannot delete the platform Owner account.")
+    if target.get("role") == "admin" and admin.get("role") != "owner":
+        raise HTTPException(status_code=403, detail="Only the platform Owner can delete an administrator.")
+
+    if target.get("role") in ("admin", "owner"):
         if user_repo.count_admins() <= 1:
             raise HTTPException(status_code=400, detail="Cannot delete the last remaining administrator.")
 
@@ -406,12 +454,90 @@ def get_user_logins_audit(
     limit: int = 50,
     admin: Dict[str, Any] = Depends(require_admin),
 ) -> Dict[str, Any]:
-    """Retrieve verified records of login attempts, timestamps, IP addresses, and hash status."""
+    """Retrieve verified records of login attempts, timestamps, IP addresses, and access status."""
     db = get_db_manager()
     login_repo = UserLoginRepository(db)
     logins = login_repo.list_logins(limit=limit)
+    # Sanitize any sensitive internal details
+    clean_logins = []
+    for l in logins:
+        item = dict(l)
+        item.pop("password_hash", None)
+        item.pop("password_encryption", None)
+        item["security_status"] = "Protected"
+        clean_logins.append(item)
     return {
-        "count": len(logins),
-        "encryption": "PBKDF2-HMAC-SHA256 (100k Salted Rounds)",
-        "items": logins,
+        "count": len(clean_logins),
+        "items": clean_logins,
+    }
+
+
+# -----------------------------------------------------------------------------
+# 5. Session Management & Safety Policies
+# -----------------------------------------------------------------------------
+
+@router.get("/sessions", summary="Admin session and conversation monitoring")
+def list_sessions(
+    limit: int = 50,
+    admin: Dict[str, Any] = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Retrieve platform conversation sessions for administrative audit."""
+    db = get_db_manager()
+    conv_repo = ConversationRepository(db)
+    sessions = conv_repo.list_conversations(limit=limit)
+    return {"count": len(sessions), "items": sessions}
+
+
+@router.delete("/sessions/{conv_id}", summary="Admin terminate conversation session")
+def terminate_session(
+    conv_id: str,
+    admin: Dict[str, Any] = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Terminate and delete a conversation session."""
+    db = get_db_manager()
+    with db.transaction() as conn:
+        conn.execute("DELETE FROM messages WHERE conversation_id = ?;", (conv_id,))
+        conn.execute("DELETE FROM conversations WHERE id = ?;", (conv_id,))
+    log_admin_action(admin["id"], "TERMINATE_SESSION", "session", conv_id, {})
+    return {"status": "terminated", "conversation_id": conv_id}
+
+
+@router.get("/safety-policies", summary="Admin inspect active safety policies")
+def get_safety_policies(admin: Dict[str, Any] = Depends(require_admin)) -> Dict[str, Any]:
+    """Retrieve active safety classification policies and custom blocked keywords."""
+    from backend.nlp.safety import get_safety_manager
+    sm = get_safety_manager()
+    return {
+        "enabled": sm.enabled,
+        "allow_educational_dual_use": sm.allow_educational_dual_use,
+        "custom_blocked_keywords": sm.custom_blocked_keywords,
+    }
+
+
+@router.put("/safety-policies", summary="Admin update safety policies")
+def update_safety_policies(
+    enabled: Optional[bool] = None,
+    allow_educational_dual_use: Optional[bool] = None,
+    custom_blocked_keywords: Optional[List[str]] = None,
+    admin: Dict[str, Any] = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Update active safety classification parameters."""
+    from backend.nlp.safety import get_safety_manager
+    sm = get_safety_manager()
+    if enabled is not None:
+        sm.enabled = enabled
+    if allow_educational_dual_use is not None:
+        sm.allow_educational_dual_use = allow_educational_dual_use
+    if custom_blocked_keywords is not None:
+        sm.custom_blocked_keywords = custom_blocked_keywords
+    log_admin_action(admin["id"], "UPDATE_SAFETY_POLICY", "safety", "global", {
+        "enabled": sm.enabled,
+        "allow_educational_dual_use": sm.allow_educational_dual_use,
+        "custom_blocked_keywords": sm.custom_blocked_keywords,
+    })
+    return {
+        "status": "updated",
+        "enabled": sm.enabled,
+        "allow_educational_dual_use": sm.allow_educational_dual_use,
+        "custom_blocked_keywords": sm.custom_blocked_keywords,
     }
