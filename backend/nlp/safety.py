@@ -139,3 +139,4 @@ def get_safety_manager() -> SafetyPolicyManager:
     if _global_safety_manager is None:
         _global_safety_manager = SafetyPolicyManager()
     return _global_safety_manager
+

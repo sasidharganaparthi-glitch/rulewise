@@ -77,3 +77,4 @@ def test_merge_pdfs(client):
 
     reader = pypdf.PdfReader(io.BytesIO(resp.content))
     assert len(reader.pages) == 2
+
